@@ -25,7 +25,7 @@ REQUIRE_HOSTED_DOMAIN = "false"
 ALLOWED_ORIGINS = "http://localhost:8788,http://127.0.0.1:8788"
 
 # The Google OAuth client ID the frontend signs in with.
-GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_ID = "32532424958-umer4n322a63nphfbnl0gkcqtrq92ms8.apps.googleusercontent.com"
 
 # The member roster: File -> Share -> Publish to web -> Comma-separated values (.csv)
 SHEET_CSV_URL = ""

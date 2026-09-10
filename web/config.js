@@ -7,8 +7,10 @@
  */
 window.RSVP_CONFIG = {
   // Google Cloud console -> Credentials -> OAuth 2.0 Client ID (Web application)
-  GOOGLE_CLIENT_ID: "",
+  GOOGLE_CLIENT_ID: "32532424958-umer4n322a63nphfbnl0gkcqtrq92ms8.apps.googleusercontent.com",
 
-  // Your deployed Worker, e.g. https://rsvp-points-worker.<subdomain>.workers.dev
-  WORKER_URL: "",
+  // Your deployed Worker. Set to the local dev Worker for now; change this
+  // to the https://rsvp-points-worker.<subdomain>.workers.dev URL that
+  // `wrangler deploy` prints, then redeploy the frontend.
+  WORKER_URL: "http://localhost:8787",
 };
