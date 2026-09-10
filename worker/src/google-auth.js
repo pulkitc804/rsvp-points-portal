@@ -19,11 +19,26 @@ export class AuthError extends Error {
   }
 }
 
-let keyCache = { keys: null, expiresAt: 0 };
+let keyCache = { keys: null, expiresAt: 0, fetchedAt: 0 };
+
+// An unknown key id may mean Google rotated its signing keys, so we refetch.
+// Without a floor on how often, anyone can send tokens bearing random key ids
+// and turn this Worker into an amplifier against Google's endpoint, adding a
+// round trip to every request while they do it. Google publishes a new key
+// well before it signs with it, so a minute of staleness costs nothing.
+const MIN_REFETCH_SECONDS = 60;
 
 function decodeBase64Url(segment) {
   const padded = segment.replace(/-/g, "+").replace(/_/g, "/");
-  const binary = atob(padded + "=".repeat((4 - (padded.length % 4)) % 4));
+  let binary;
+  try {
+    binary = atob(padded + "=".repeat((4 - (padded.length % 4)) % 4));
+  } catch {
+    // atob throws on characters outside the alphabet. Every segment here is
+    // attacker-supplied, so this has to be a clean rejection rather than an
+    // exception escaping into the generic 500 handler.
+    throw new AuthError("invalid_token", "Sign-in token is not correctly encoded.");
+  }
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
@@ -54,6 +69,7 @@ async function fetchKeys(fetchImpl, now) {
   keyCache = {
     keys,
     expiresAt: now + (Number.isFinite(maxAge) && maxAge > 0 ? maxAge : 3600),
+    fetchedAt: now,
   };
   return keys;
 }
@@ -64,9 +80,9 @@ async function keyFor(kid, fetchImpl, now) {
   }
 
   let jwk = keyCache.keys.find((key) => key.kid === kid);
-  if (!jwk) {
+  if (!jwk && now - keyCache.fetchedAt >= MIN_REFETCH_SECONDS) {
     // Google rotates signing keys. An unknown kid may just mean our cache is
-    // stale, so refetch once before rejecting the token.
+    // stale, so refetch — but no more often than MIN_REFETCH_SECONDS.
     await fetchKeys(fetchImpl, now);
     jwk = keyCache.keys.find((key) => key.kid === kid);
   }
@@ -78,7 +94,7 @@ async function keyFor(kid, fetchImpl, now) {
 
 /** Exposed for tests, which need a clean cache between cases. */
 export function resetKeyCache() {
-  keyCache = { keys: null, expiresAt: 0 };
+  keyCache = { keys: null, expiresAt: 0, fetchedAt: 0 };
 }
 
 export async function verifyGoogleIdToken(token, options) {

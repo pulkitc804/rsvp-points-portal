@@ -281,6 +281,53 @@ rather than stubbed out. Each attack in the brief has a test:
 - a Gmail address that appears in the Sheet
 - a response asserted to contain no other member's name or email
 
+## Security review
+
+What the portal defends against, and what it deliberately does not.
+
+**Handled in code, with tests:**
+
+- Token signature, audience, issuer, expiry and `email_verified`, all checked
+  before any data is read. Only `RS256` is accepted; `alg: none` is rejected.
+- No endpoint accepts an identifier, so there is no request to tamper with.
+- Domain enforcement separate from roster membership.
+- Malformed token segments return 401 rather than escaping as a 500.
+- JWKS refetching is throttled to once a minute, so unknown key ids cannot
+  be used to turn the Worker into an amplifier against Google's endpoint.
+- CORS is an explicit origin allowlist, not `*`.
+- Member responses are `no-store`, so no browser or proxy caches them.
+- Errors never name the failed check, the missing variable, or the Sheet
+  column; those go to `wrangler tail`.
+- Frontend renders every value with `textContent`, never `innerHTML`, so a
+  name typed into the Sheet cannot become script.
+- The ID token is held in a closure variable, never `localStorage`, so it is
+  not readable by other scripts and does not outlive the tab.
+- `web/_headers` sets a `default-src 'none'` CSP, `X-Frame-Options: DENY`,
+  and a referrer policy. **This one is untested** — `_headers` only applies
+  on Pages, so verify it on your first deploy as that file explains.
+
+**Accepted risks, and why:**
+
+- **The published CSV is world-readable to anyone with the link.** This is
+  the largest real exposure and it is inherent to the approach the brief
+  specifies. Treat the published URL as a secret, and see the note below
+  about the Sheets API.
+- **No rate limiting.** A member with a valid token could call `/api/me`
+  repeatedly. The Sheet response is cached for `SHEET_CACHE_SECONDS`, so the
+  cost is bounded, and Cloudflare's dashboard can add a rate-limiting rule
+  without code changes if it ever matters.
+- **CORS does not protect the API.** Any non-browser client can call the
+  Worker; a valid Google token is what gates it. The origin allowlist limits
+  which *websites* can make a member's browser call it, which is its job.
+- **Worker logs contain member emails** on rejection and duplicate-row
+  warnings. Useful for support, but anyone with Cloudflare log access can
+  read them. Narrow the `console.warn` calls in `index.js` if that matters
+  to the E-Board.
+
+**Not attempted:** account takeover of a member's Google account, a
+compromised E-Board Google account, or anyone with edit access to the Sheet.
+All three are outside what a points portal can defend.
+
 ## Two things to decide with the E-Board
 
 **A published-CSV Sheet is readable by anyone with the link.** That is the

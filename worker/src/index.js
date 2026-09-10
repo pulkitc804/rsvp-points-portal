@@ -76,6 +76,7 @@ function json(body, status, extraHeaders) {
       // Member data must never be cached by a browser or a shared proxy.
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
       ...extraHeaders,
     },
   });

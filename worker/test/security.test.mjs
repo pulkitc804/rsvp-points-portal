@@ -296,3 +296,39 @@ test("default mode admits a Rutgers address with no hosted domain", async () => 
   const { response } = await call(token);
   assert.equal(response.status, 200);
 });
+
+// --- Hardening found in security review -----------------------------------
+
+test("a token with a malformed signature segment is a 401, not a crash", async () => {
+  const real = await signToken(google, validPayload());
+  const [header, payload] = real.split(".");
+  // "!!!!" is not valid base64url. Decoding it throws, and an uncaught throw
+  // here would surface as a 500 "something went wrong" instead of a clean
+  // rejection — and would log as an unexpected failure, burying real ones.
+  const { response, body } = await call(`${header}.${payload}.!!!!`);
+  assert.equal(response.status, 401);
+  assert.equal(body.error, "invalid_token");
+});
+
+test("unknown key ids cannot be used to hammer Google's JWKS endpoint", async () => {
+  const fetchStub = stubFetch({ jwks: google.jwks, csv: SAMPLE_CSV });
+  globalThis.fetch = fetchStub;
+
+  // Each request presents a different unknown kid. A naive implementation
+  // refetches the key set every time, turning any unauthenticated caller
+  // into an amplifier against Google and adding a round trip to every
+  // request. Refetching must be throttled.
+  for (let i = 0; i < 8; i++) {
+    const token = await signToken(
+      { privateKey: google.privateKey, kid: `rotated-${i}` },
+      validPayload()
+    );
+    const response = await worker.fetch(request(token), TEST_ENV);
+    assert.equal(response.status, 401);
+  }
+
+  assert.ok(
+    fetchStub.calls.jwks <= 2,
+    `expected at most 2 JWKS fetches, made ${fetchStub.calls.jwks}`
+  );
+});

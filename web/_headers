@@ -1,0 +1,37 @@
+# Cloudflare Pages security headers. Applied automatically on deploy —
+# Pages reads this file from the root of the published directory.
+#
+# NOTE: this policy could not be tested locally, because _headers only takes
+# effect on Pages. On your FIRST deploy, open the site with devtools console
+# open and sign in. If sign-in silently fails, look for a message beginning
+# "Refused to load..." — that names the exact directive to widen. The CSP
+# values below follow Google's documented requirements for the gsi/client
+# library.
+
+/*
+  # default-src 'none' means anything not listed below is blocked outright.
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client; connect-src 'self' https://accounts.google.com/gsi/ https://accounts.google.com/.well-known/ https://*.workers.dev; frame-src https://accounts.google.com/gsi/ https://accounts.google.com/o/oauth2/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+
+  # Stops the portal being framed by another site to trick a member into
+  # clicking something they cannot see.
+  X-Frame-Options: DENY
+
+  # Never leak the member's URL to third parties.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  X-Content-Type-Options: nosniff
+
+  # The portal needs none of these.
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=()
+
+# Two notes on the policy above, for whoever maintains this next:
+#
+# 1. 'unsafe-inline' appears in style-src only. Google's rendered sign-in
+#    button applies inline styles, so removing it may break the button's
+#    appearance. Inline STYLE is far less dangerous than inline SCRIPT, and
+#    script-src stays strict. Try removing it and watch the console; if the
+#    button still renders correctly, leave it out.
+#
+# 2. connect-src allows https://*.workers.dev so the page can call the
+#    Worker. If you move the Worker to a custom domain, add that origin here
+#    or sign-in will fail with a CSP error.
