@@ -145,12 +145,32 @@ npm install
 npx wrangler login
 ```
 
-Set the two values that have no sensible default, in `wrangler.toml`:
+Set the client ID in `wrangler.toml` — it is public by design, so committing
+it is fine:
 
 ```toml
 GOOGLE_CLIENT_ID = "your-id.apps.googleusercontent.com"
-SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/…/pub?output=csv"
 ```
+
+The roster URL is different. Anyone holding the published CSV link can read
+every member's name, email and points, and anything committed to git stays
+recoverable from history forever — including after the repo is transferred to
+RSVP. So it is stored as a Worker secret and never appears in the repo:
+
+```bash
+npx wrangler secret put SHEET_CSV_URL
+```
+
+Paste the URL when prompted. `npx wrangler secret list` then shows the name
+without the value. For local `wrangler dev`, put it in `worker/.dev.vars`,
+which `.gitignore` excludes.
+
+**First deploy only:** a brand-new Cloudflare account has no `workers.dev`
+subdomain, and `wrangler deploy` uploads the Worker but then fails with
+"You need to register a workers.dev subdomain before publishing". Register one
+at **dash.cloudflare.com → Workers & Pages → Overview**, pick a subdomain
+name, then re-run deploy. The Worker URL becomes
+`rsvp-points-worker.<your-subdomain>.workers.dev`.
 
 Then deploy:
 
@@ -205,7 +225,7 @@ under **Workers & Pages → rsvp-points-worker → Settings → Variables**.
 | `REQUIRE_HOSTED_DOMAIN` | `false` | Also require a Google Workspace-managed account (see below) |
 | `ALLOWED_ORIGINS` | localhost | Which sites may call the Worker |
 | `GOOGLE_CLIENT_ID` | — | Which OAuth app tokens must be issued for |
-| `SHEET_CSV_URL` | — | Which Sheet is the roster |
+| `SHEET_CSV_URL` | — | Which Sheet is the roster — **a secret, not a var** (see below) |
 | `SHEET_CACHE_SECONDS` | `30` | How long a cached copy of the Sheet may be reused |
 
 **Changing the thresholds** is two edits and a redeploy; no code changes. The
