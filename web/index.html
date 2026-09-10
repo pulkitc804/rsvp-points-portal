@@ -8,69 +8,65 @@
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="stage">
-    <!-- The card is a member credential: one object with a printed header
-         band, the member's standing, and a tear-off footer. Every state of
-         the app is the same credential with different contents. -->
-    <article class="credential">
-      <header class="band">
-        <span class="wordmark">RSVP</span>
-        <span class="band-label" id="band-label">Member Portal</span>
-      </header>
+  <main class="page">
+    <header class="brand">
+      <!-- RSVP's mark, in the logo's own colours. Reproduced as SVG so it
+           stays crisp and needs no image request. -->
+      <svg class="mark" viewBox="0 0 321 337" aria-hidden="true" focusable="false">
+        <path d="M113 4 L181 199 L16 199 Z" fill="#E18282"></path>
+        <path d="M108 137 L305 137 L207 330 Z" fill="#A6DCE8" opacity="0.8"></path>
+      </svg>
+      <span class="brand-name">RSVP</span>
+    </header>
 
-      <section id="state-signin" class="panel" hidden>
-        <h1 class="panel-title">Points &amp; Standing</h1>
-        <p class="panel-lede">Sign in with your Rutgers Google account to see your current points and membership standing.</p>
-        <div id="google-button" class="gbutton"></div>
-        <p class="note">Use your <span class="mono">scarletmail.rutgers.edu</span> or <span class="mono">rutgers.edu</span> account.</p>
-      </section>
+    <h1 class="title">Points &amp; Standing</h1>
 
-      <section id="state-loading" class="panel" hidden>
-        <div class="spinner" aria-hidden="true"></div>
-        <p class="panel-lede" role="status">Looking up your points…</p>
-      </section>
+    <section id="state-signin" class="block" hidden>
+      <p class="lede">Sign in with your Rutgers Google account to see your current points and membership standing.</p>
+      <div id="google-button" class="gbutton"></div>
+      <p class="hint">Use your scarletmail.rutgers.edu or rutgers.edu account.</p>
+    </section>
 
-      <section id="state-dashboard" class="panel" hidden>
-        <p class="greeting">Welcome, <span id="first-name"></span></p>
+    <section id="state-loading" class="block" hidden>
+      <p class="lede" role="status">Looking up your points…</p>
+    </section>
 
-        <div class="tally">
-          <span class="tally-figure" id="points-value">0</span>
-          <span class="tally-unit">Points</span>
-        </div>
+    <section id="state-dashboard" class="block" hidden>
+      <p class="identity">
+        <span class="identity-greeting">Welcome, <span id="first-name"></span></span>
+        <span class="identity-detail">
+          <span id="member-name"></span> &middot; <span id="signed-in-as"></span>
+        </span>
+      </p>
 
-        <p class="standing" id="standing-pill"></p>
+      <div class="readout">
+        <p class="metric">
+          <span class="metric-value" id="points-value">0</span>
+          <span class="metric-label">points</span>
+        </p>
+        <p class="status" id="standing-pill"></p>
+      </div>
 
-        <!-- Standing ladder: position against RSVP's own thresholds, never
-             against other members. There is no ranking here to read. -->
-        <div class="ladder" id="ladder" role="img" aria-label="Standing">
-          <div class="rung" data-rung="at_risk"><span class="rung-bar"></span><span class="rung-label">At Risk</span></div>
-          <div class="rung" data-rung="okay"><span class="rung-bar"></span><span class="rung-label">Okay</span></div>
-          <div class="rung" data-rung="good"><span class="rung-bar"></span><span class="rung-label">Good</span></div>
-        </div>
+      <p class="lede" id="standing-message"></p>
+      <p class="hint" id="next-step" hidden></p>
+    </section>
 
-        <p class="standing-message" id="standing-message"></p>
-        <p class="next-step note" id="next-step" hidden></p>
-      </section>
-
-      <section id="state-error" class="panel" hidden>
-        <h1 class="panel-title" id="error-title">Something went wrong</h1>
-        <p class="panel-lede" id="error-message" role="alert"></p>
+    <section id="state-error" class="block" hidden>
+      <h2 class="subtitle" id="error-title">Something went wrong</h2>
+      <p class="lede" id="error-message" role="alert"></p>
+      <p class="actions">
         <button id="error-retry" type="button" class="button">Try again</button>
-        <button id="error-signout" type="button" class="link-button">Use a different account</button>
-      </section>
+        <button id="error-signout" type="button" class="text-button">Use a different account</button>
+      </p>
+    </section>
 
-      <!-- The stub carries the verified identity, so it appears only once we
-           have one from the Worker. -->
-      <footer class="stub" id="stub" hidden>
-        <p class="stub-name" id="member-name"></p>
-        <p class="stub-id mono" id="signed-in-as"></p>
-        <button id="signout" type="button" class="link-button">Sign out</button>
-      </footer>
-    </article>
+    <footer class="foot" id="foot" hidden>
+      <button id="signout" type="button" class="text-button">Sign out</button>
+    </footer>
 
     <p class="colophon">Points are maintained by the RSVP E-Board.</p>
   </main>

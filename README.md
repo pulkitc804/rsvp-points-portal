@@ -22,11 +22,10 @@ worker/          Cloudflare Worker — the only thing that reads the Sheet
     standing.js      points -> standing, from configured thresholds
     config.js        env vars, validated at request time
     csv.js           RFC 4180 CSV parser
-  test/          46 tests, including the attacks the brief asks us to prevent
+  test/          48 tests, including the attacks the brief asks us to prevent
 web/             Static frontend — deploy to Cloudflare Pages
   index.html         four states: sign in, loading, dashboard, error
-                     laid out as a member credential: printed band, standing,
-                     tear-off stub carrying the verified name and email
+                     single left-aligned column; logo as inline SVG
   app.js             Google Sign-In, fetches /api/me, renders
   styles.css         mobile first, light and dark
   config.js          public client ID and Worker URL
@@ -240,28 +239,24 @@ help a real member.
 
 ## Design
 
-The card is a member credential rather than a generic dashboard panel: a
-printed band, the standing, and a tear-off stub carrying the verified name
-and email.
+A single left-aligned column: no cards, no header bands, no colour blocks.
+There is one thing to read, so nothing competes with it.
 
-Colours follow RSVP's logo — orange, blue, white. **Two CSS variables at the
-top of `web/styles.css` carry the brand:**
+Colours are sampled from RSVP's own logo (the two overlapping triangles):
 
 ```css
---orange: #ef7622;   /* the credential band */
---navy:   #123a6b;   /* type and structure */
+--logo-coral: #e18282;   /* the upward triangle */
+--logo-blue:  #a6dce8;   /* the downward triangle */
 ```
 
-Every other colour is derived from those two, so correcting them re-skins the
-whole portal. If the exact logo hexes differ from these, change those two
-lines and nothing else. One constraint to keep: white type on this orange is
-only 2.9:1, so the band's own type is navy. If you swap in a darker orange,
-the band text can go white.
+Both are pale by design — measured against white they reach only 2.7:1 and
+1.5:1, far under the 4.5:1 that text needs. So the logo colours are used for
+the logo, reproduced as inline SVG in `index.html`, and the text accent is a
+darkened blue drawn from the same hue (`#2f6e82`, 5.7:1). Status colours are
+semantic and deliberately separate from the brand, so "At Risk" red never
+reads as decoration.
 
-Standing is shown three ways at once — a written label, a colour, and a
-three-rung ladder — so it never depends on colour alone, and so the ladder
-can encode position against RSVP's thresholds without ranking members
-against each other.
+Standing is shown as a written label, never colour alone.
 
 ## Tests
 
@@ -269,7 +264,7 @@ against each other.
 cd worker && npm test
 ```
 
-46 tests, no cloud accounts needed. The security tests generate a real RSA
+48 tests, no cloud accounts needed. The security tests generate a real RSA
 keypair and sign real tokens, so the signature path is genuinely exercised
 rather than stubbed out. Each attack in the brief has a test:
 

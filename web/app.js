@@ -20,8 +20,7 @@
   var byId = function (id) { return document.getElementById(id); };
 
   var el = {
-    bandLabel: byId("band-label"),
-    stub: byId("stub"),
+    foot: byId("foot"),
     signin: byId("state-signin"),
     loading: byId("state-loading"),
     dashboard: byId("state-dashboard"),
@@ -32,7 +31,6 @@
     standing: byId("standing-pill"),
     standingMessage: byId("standing-message"),
     nextStep: byId("next-step"),
-    ladder: byId("ladder"),
     memberName: byId("member-name"),
     signedInAs: byId("signed-in-as"),
     signOut: byId("signout"),
@@ -42,14 +40,12 @@
     errorSignOut: byId("error-signout")
   };
 
-  var LADDER_ORDER = ["at_risk", "okay", "good"];
-
-  function show(state, bandLabel) {
+  function show(state) {
     [el.signin, el.loading, el.dashboard, el.error].forEach(function (panel) {
       panel.hidden = panel !== state;
     });
-    el.bandLabel.textContent = bandLabel;
-    el.stub.hidden = state !== el.dashboard;
+    // Sign out is only meaningful once there is a session to end.
+    el.foot.hidden = state !== el.dashboard;
   }
 
   /**
@@ -122,17 +118,7 @@
     // "Use a different account" only helps when the problem is which account
     // they signed in with.
     el.errorSignOut.hidden = !spec.reauth;
-    show(el.error, "Notice");
-  }
-
-  function renderLadder(standing) {
-    var reachedTo = LADDER_ORDER.indexOf(standing);
-    LADDER_ORDER.forEach(function (level, index) {
-      var rung = el.ladder.querySelector('[data-rung="' + level + '"]');
-      if (!rung) return;
-      rung.setAttribute("data-reached", String(index <= reachedTo));
-      rung.setAttribute("data-current", String(index === reachedTo));
-    });
+    show(el.error);
   }
 
   /**
@@ -165,22 +151,20 @@
     el.standing.textContent = member.standingLabel;
     el.standing.setAttribute("data-standing", member.standing);
     el.standingMessage.textContent = member.standingMessage;
-    el.ladder.setAttribute("aria-label", "Standing: " + member.standingLabel);
     el.memberName.textContent = member.name;
     el.signedInAs.textContent = member.email;
 
-    renderLadder(member.standing);
     renderNextStep(member, data.thresholds);
-    show(el.dashboard, "Member Standing");
+    show(el.dashboard);
   }
 
   function loadPoints() {
     if (!idToken) {
-      show(el.signin, "Member Portal");
+      show(el.signin);
       return;
     }
 
-    show(el.loading, "Member Standing");
+    show(el.loading);
 
     fetch(config.WORKER_URL.replace(/\/+$/, "") + "/api/me", {
       method: "GET",
@@ -220,7 +204,7 @@
       // Stops Google from silently signing the same account straight back in.
       google.accounts.id.disableAutoSelect();
     }
-    show(el.signin, "Member Portal");
+    show(el.signin);
   }
 
   el.signOut.addEventListener("click", signOut);
@@ -233,7 +217,7 @@
       "web/config.js is missing " + missing.join(" and ") + ". Fill it in, then reload.";
     el.errorRetry.hidden = true;
     el.errorSignOut.hidden = true;
-    show(el.error, "Notice");
+    show(el.error);
   }
 
   // Google's script is loaded async and calls this when it is ready.
@@ -258,14 +242,15 @@
       size: "large",
       text: "signin_with",
       shape: "rectangular",
+      width: 260,
       logo_alignment: "left"
     });
 
-    show(el.signin, "Member Portal");
+    show(el.signin);
     // If this member signed in recently, Google returns a token without a
     // click and the credential appears directly.
     google.accounts.id.prompt();
   };
 
-  show(el.signin, "Member Portal");
+  show(el.signin);
 })();

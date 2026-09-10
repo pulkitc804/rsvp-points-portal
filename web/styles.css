@@ -1,384 +1,232 @@
 /* ===========================================================================
    RSVP Points Portal
 
-   Palette follows RSVP's own logo: orange, blue, white.
-   The two brand hexes are the ONLY colours to change if these are off —
-   --orange and --navy below. Everything else is derived from them, so
-   correcting those two lines re-skins the whole portal consistently.
+   Colours come from RSVP's own logo, sampled from the mark itself:
+     coral  #E18282   the upward triangle
+     blue   #A6DCE8   the downward triangle
+   Both are pale by design — measured against white they reach only 2.7:1 and
+   1.5:1, well under the 4.5:1 needed for text. So the logo colours are used
+   for the logo, where they belong, and the text accent is a darkened blue
+   drawn from the same hue (5.7:1). Status colours stay semantic and separate
+   from the brand so "at risk" red never reads as decoration.
 
-   Orange carries the credential band; navy carries type and structure;
-   white is the card. Neutrals are biased toward the navy so the greys read
-   as part of the identity rather than as a default grey.
-
-   Contrast: white on orange is only 2.9:1, so the band's own type is navy,
-   not white. Bars and rules on light ground use --orange-deep to clear the
-   3:1 minimum for graphics.
+   Layout is a single left-aligned column: no cards, no bands, no colour
+   blocks. There is one thing to read, so nothing competes with it.
    =========================================================================== */
 
 :root {
-  --orange: #ef7622;
-  --orange-deep: #cf5f10;
-  --navy: #123a6b;
-  --navy-deep: #0f1e33;
+  --logo-coral: #e18282;
+  --logo-blue: #a6dce8;
 
-  --ground: #eef1f5;
-  --card: #ffffff;
-  --ink: #0f1e33;
-  --ink-soft: #46586f;
-  --ink-faint: #64748c;   /* 4.8:1 on --card */
-  --rule: #dee4ec;
-  --rule-soft: #eaeef3;
+  --bg: #fbfbfc;
+  --ink: #16181c;
+  --ink-soft: #5c636d;
+  --ink-faint: #7b8290;
+  --rule: #e4e6ea;
 
-  --accent: var(--orange-deep);
-  --band-bg: var(--orange);
-  --band-text: #0f1e33;
+  --accent: #2f6e82;          /* 5.7:1 on --bg */
+  --focus: #2f6e82;
 
-  --good: #10664a;
-  --good-tint: #e2f0eb;
-  --okay: #8a5000;
-  --okay-tint: #fbeedd;
-  --risk: #a8213a;
-  --risk-tint: #fbe8ec;
-
-  --shadow: 0 1px 1px rgba(15, 30, 51, .04), 0 10px 30px -18px rgba(15, 30, 51, .5);
+  --good: #15704f;            /* 6.1:1 */
+  --okay: #8a5300;            /* 6.3:1 */
+  --risk: #a8342f;            /* 6.6:1 */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ground: #0b1220;
-    --card: #141d2e;
-    --ink: #eaeff6;
-    --ink-soft: #a3b1c4;
-    --ink-faint: #8798ad;   /* 5.7:1 on --card */
-    --rule: #26324a;
-    --rule-soft: #1d273a;
+    --bg: #14181b;
+    --ink: #edeff2;
+    --ink-soft: #9aa3ad;
+    --ink-faint: #838d98;
+    --rule: #262c31;
 
-    /* The band is printed stock: it stays the same orange in both themes
-       while the paper around it changes. */
-    --accent: #f5a05a;
+    --accent: #86c6d8;
+    --focus: #86c6d8;
 
-    --good: #4cbd94;
-    --good-tint: #102b23;
-    --okay: #d8a13a;
-    --okay-tint: #2b2313;
-    --risk: #ff6b81;
-    --risk-tint: #2d1620;
-
-    --shadow: 0 1px 1px rgba(0, 0, 0, .5), 0 14px 34px -20px rgba(0, 0, 0, .9);
+    --good: #4fbe95;          /* 7.8:1 on --bg */
+    --okay: #d9a43c;          /* 7.9:1 */
+    --risk: #f08a8a;          /* 7.4:1 */
   }
 }
 
 * { box-sizing: border-box; }
 
 /* Author rules below set `display` on elements the app toggles with the
-   `hidden` attribute, which would otherwise win over the browser's default
-   [hidden] rule and leave a hidden control on screen. */
+   `hidden` attribute, which would otherwise win over the browser default. */
 [hidden] { display: none !important; }
 
 body {
   margin: 0;
-  min-height: 100vh;
-  padding: 28px 18px 36px;
-  background: var(--ground);
+  min-height: 100dvh;
+  padding: 40px 24px 48px;
+  background: var(--bg);
   color: var(--ink);
-  font-family: Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
 }
 
-.stage { width: 100%; max-width: 392px; }
-.mono { font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+.page { width: 100%; max-width: 440px; }
 
-/* --- The credential ------------------------------------------------------ */
+/* --- Brand ---------------------------------------------------------------- */
 
-.credential {
-  background: var(--card);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-
-.band {
-  position: relative;
+.brand {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 13px 18px;
-  background: var(--band-bg);
-  color: var(--band-text);
-  /* A fine diagonal hatch, the way security printing marks a real credential.
-     Two degrees off 45 so it never moirés against the pixel grid. */
-  background-image:
-    repeating-linear-gradient(47deg,
-      rgba(15, 30, 51, .07) 0 1px,
-      transparent 1px 7px);
+  align-items: center;
+  gap: 9px;
 }
 
-.band::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 2px;
-  background: var(--navy);
+.mark { width: 22px; height: 23px; display: block; }
+
+.brand-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .04em;
 }
 
-.wordmark {
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: .1em;
-  line-height: 1;
+.title {
+  margin: 26px 0 0;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.15;
 }
 
-.band-label {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  /* Navy on orange is 5.8:1, so the label can hold its own weight. */
-  opacity: .78;
+.subtitle {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -.01em;
 }
 
-.panel { padding: 30px 26px 26px; text-align: center; }
+.block { padding-top: 26px; }
 
-.panel-title {
-  margin: 0 0 10px;
-  font-size: 22px;
-  font-weight: 650;
-  letter-spacing: -.015em;
-  text-wrap: balance;
-}
-
-.panel-lede {
+.lede {
   margin: 0;
+  max-width: 46ch;
   color: var(--ink-soft);
   font-size: 15.5px;
   text-wrap: pretty;
 }
 
-.note {
-  margin: 16px 0 0;
-  font-size: 12.5px;
+.hint {
+  margin: 12px 0 0;
+  max-width: 46ch;
   color: var(--ink-faint);
-  line-height: 1.5;
-}
-.note .mono { font-size: 11.5px; }
-
-/* --- Standing ----------------------------------------------------------- */
-
-.greeting {
-  margin: 0;
-  font-size: 15px;
-  color: var(--ink-soft);
-}
-.greeting span { color: var(--ink); font-weight: 600; }
-
-.tally {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.tally-figure {
-  font-size: 84px;
-  font-weight: 700;
-  line-height: .92;
-  letter-spacing: -.045em;
-  font-variant-numeric: tabular-nums;
-  /* Negative tracking shortens the advance width of the last glyph, so the
-     digits sit a hair right of true centre. Nudge the box back. */
-  margin-right: .045em;
-}
-
-.tally-unit {
-  margin-top: 7px;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-/* Standing states carry a written label as well as a colour, so the meaning
-   never depends on colour alone. */
-.standing {
-  display: inline-block;
-  margin: 20px 0 0;
-  padding: 6px 14px;
-  border-radius: 3px;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: .01em;
-}
-.standing[data-standing="good"]    { color: var(--good); background: var(--good-tint); }
-.standing[data-standing="okay"]    { color: var(--okay); background: var(--okay-tint); }
-.standing[data-standing="at_risk"] { color: var(--risk); background: var(--risk-tint); }
-
-.ladder {
-  margin: 18px auto 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  max-width: 260px;
-}
-
-.rung-bar {
-  display: block;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--rule);
-}
-
-.rung-label {
-  display: block;
-  margin-top: 7px;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 9.5px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-/* Every rung up to and including the member's own is filled, so the card
-   reads as a level reached rather than a score out of three. */
-.rung[data-reached="true"] .rung-bar { background: var(--accent); }
-.rung[data-current="true"] .rung-label { color: var(--ink); font-weight: 600; }
-
-.standing-message {
-  margin: 18px auto 0;
-  max-width: 30ch;
-  font-size: 14.5px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-  text-wrap: pretty;
-}
-
-.next-step { margin-top: 10px; }
-
-/* --- Tear-off stub ------------------------------------------------------ */
-
-.stub {
-  position: relative;
-  padding: 15px 18px 17px;
-  border-top: 1px dashed var(--rule);
-  text-align: center;
-}
-
-/* Notches, the way a real tear-off stub is punched. */
-.stub::before,
-.stub::after {
-  content: "";
-  position: absolute;
-  top: -6px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--ground);
-}
-.stub::before { left: -6px; }
-.stub::after { right: -6px; }
-
-.stub-name {
-  margin: 0 0 2px;
   font-size: 13.5px;
-  font-weight: 600;
-  letter-spacing: -.005em;
-  color: var(--ink);
 }
 
-.stub-id {
-  margin: 0;
-  font-size: 10.5px;
-  letter-spacing: .04em;
+/* --- Identity and readout ------------------------------------------------ */
+
+.identity { margin: 0; display: flex; flex-direction: column; }
+
+.identity-greeting { font-size: 15.5px; font-weight: 600; }
+
+.identity-detail {
+  margin-top: 1px;
   color: var(--ink-faint);
-  word-break: break-all;
+  font-size: 13.5px;
+  word-break: break-word;
 }
 
-/* --- Controls ----------------------------------------------------------- */
-
-.gbutton {
+/* Points and standing sit on one line: the number is the answer, the
+   standing is what it means. Baseline-aligned so they read as one statement. */
+.readout {
+  margin: 26px 0 22px;
   display: flex;
-  justify-content: center;
-  margin-top: 22px;
-  min-height: 44px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.metric { margin: 0; display: flex; align-items: baseline; gap: 8px; }
+
+.metric-value {
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-label { color: var(--ink-faint); font-size: 14.5px; }
+
+/* Standing carries a written label, not just a colour, so meaning never
+   depends on colour alone. */
+.status { margin: 0; font-size: 15.5px; font-weight: 600; }
+.status[data-standing="good"]    { color: var(--good); }
+.status[data-standing="okay"]    { color: var(--okay); }
+.status[data-standing="at_risk"] { color: var(--risk); }
+
+/* --- Controls ------------------------------------------------------------ */
+
+.gbutton { margin-top: 20px; min-height: 44px; }
+
+.actions {
+  margin: 20px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .button {
-  margin-top: 20px;
-  min-height: 44px;
-  padding: 11px 22px;
-  border: none;
-  border-radius: 3px;
-  background: var(--navy);
-  color: #fff;
+  min-height: 40px;
+  padding: 9px 17px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--bg);
   font-family: inherit;
   font-size: 14.5px;
-  font-weight: 600;
-  letter-spacing: .01em;
+  font-weight: 500;
   cursor: pointer;
+  transition: opacity .15s ease;
 }
-.button:hover { background: var(--navy-deep); }
+.button:hover { opacity: .85; }
 
-.link-button {
-  margin-top: 7px;
-  padding: 6px 4px;
+.text-button {
+  min-height: 40px;
+  padding: 9px 2px;
   border: none;
   background: none;
-  color: var(--ink-faint);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10.5px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 14.5px;
   cursor: pointer;
 }
-.link-button:hover { color: var(--accent); }
+.text-button:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .button:focus-visible,
-.link-button:focus-visible {
-  outline: 2px solid var(--accent);
+.text-button:focus-visible {
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-.spinner {
-  width: 24px;
-  height: 24px;
-  margin: 2px auto 16px;
-  border: 2.5px solid var(--rule);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin .75s linear infinite;
+.foot {
+  margin-top: 28px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rule);
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 .colophon {
-  margin: 18px 0 0;
-  text-align: center;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: .13em;
-  text-transform: uppercase;
+  margin: 40px 0 0;
   color: var(--ink-faint);
+  font-size: 13px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spinner { animation-duration: 2.4s; }
-  .rung-bar { transition: none; }
+  .button { transition: none; }
 }
 
-/* Desktop keeps the single column — there is only ever one thing to read —
-   and simply gives the credential more room. */
 @media (min-width: 560px) {
-  body { padding: 48px; }
-  .stage { max-width: 412px; }
-  .panel { padding: 36px 34px 30px; }
-  .tally-figure { font-size: 92px; }
+  body { align-items: center; padding: 56px 40px; }
+  .metric-value { font-size: 50px; }
 }
