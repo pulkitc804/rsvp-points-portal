@@ -11,6 +11,58 @@ Browser  ──  Google ID token  ──▶  Cloudflare Worker  ──  reads CS
    └────────  name, points, standing ─────┘
 ```
 
+
+## Live deployment
+
+| | URL |
+|---|---|
+| Member portal | https://rsvp-points-portal.pc937.workers.dev |
+| API Worker | https://rsvp-points-worker.pc937.workers.dev |
+
+Both run on the Cloudflare account for `pc937@scarletmail.rutgers.edu`.
+Cloudflare Pages is now part of Workers, so the frontend is a Worker serving
+static assets rather than a classic Pages project — `_headers` still applies,
+verified live.
+
+### Deploying
+
+Two separate Workers, each with its own config. **Always pass the config
+explicitly:**
+
+```bash
+cd worker && npx wrangler deploy
+```
+
+```bash
+npx wrangler deploy -c site.wrangler.jsonc
+```
+
+A trap worth knowing: wrangler finds its config by walking **up** from the
+working directory, and prefers `wrangler.jsonc` over `wrangler.toml`. A
+`wrangler.jsonc` in the repo root therefore shadows `worker/wrangler.toml`,
+and `wrangler deploy` run inside `worker/` deploys the *frontend* instead of
+the API — reporting success while the API keeps running old code. That is why
+the site config is named `site.wrangler.jsonc` rather than `wrangler.jsonc`,
+and why it sits outside `web/` (anything inside `web/` is served publicly).
+
+To confirm which Worker a deploy actually touched, read the "Deployed ..."
+line in the output, and verify the live variables rather than trusting the
+file on disk:
+
+```bash
+npx wrangler deploy --dry-run
+```
+
+### The three origins that must agree
+
+Sign-in fails silently if any of these disagree:
+
+1. The Worker's `ALLOWED_ORIGINS` — must list the portal origin
+2. Google Cloud → Credentials → your OAuth client → **Authorized JavaScript
+   origins** — must list the portal origin
+3. `web/_headers` CSP `connect-src` — must permit the API Worker origin
+   (currently `https://*.workers.dev`, which covers it)
+
 ## Repository layout
 
 ```
@@ -23,7 +75,8 @@ worker/          Cloudflare Worker — the only thing that reads the Sheet
     config.js        env vars, validated at request time
     csv.js           RFC 4180 CSV parser
   test/          48 tests, including the attacks the brief asks us to prevent
-web/             Static frontend — deploy to Cloudflare Pages
+site.wrangler.jsonc  Deploy config for the frontend (see Deploying)
+web/             Static frontend — deployed as a Worker with static assets
   index.html         four states: sign in, loading, dashboard, error
                      single left-aligned column; logo as inline SVG
   app.js             Google Sign-In, fetches /api/me, renders
@@ -194,7 +247,7 @@ Fill in `web/config.js` with the client ID and the Worker URL, add the Pages
 origin to the Worker's `ALLOWED_ORIGINS`, redeploy the Worker, then:
 
 ```bash
-npx wrangler pages deploy web --project-name rsvp-points-portal
+npx wrangler deploy -c site.wrangler.jsonc
 ```
 
 Add the resulting `*.pages.dev` origin to **both** the Worker's

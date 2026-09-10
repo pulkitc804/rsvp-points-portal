@@ -1,0 +1,17 @@
+{
+  // Static frontend, deployed as a Worker serving static assets.
+  //
+  //   npx wrangler deploy -c site.wrangler.jsonc
+  //
+  // The filename is intentionally not "wrangler.jsonc". Wrangler discovers
+  // config by walking up from the working directory and prefers .jsonc over
+  // .toml, so a root wrangler.jsonc shadows worker/wrangler.toml and makes
+  // `wrangler deploy` inside worker/ deploy THIS project instead of the API
+  // Worker — silently, with a success message. Keeping this name unique
+  // makes both deploys explicit. It also must not live inside web/, or it
+  // would be served as a public asset.
+  "name": "rsvp-points-portal",
+  "compatibility_date": "2026-09-10",
+  "observability": { "enabled": true },
+  "assets": { "directory": "web" }
+}

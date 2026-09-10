@@ -21,8 +21,10 @@ ALLOWED_DOMAINS = "scarletmail.rutgers.edu,rutgers.edu"
 # before turning this on. See README, "Enforcing the Rutgers domain".
 REQUIRE_HOSTED_DOMAIN = "false"
 
-# Which sites may call this Worker. Add the Pages URL once the frontend is deployed.
-ALLOWED_ORIGINS = "http://localhost:8788,http://127.0.0.1:8788"
+# Which sites may call this Worker. This is an exact-match allowlist, so a
+# Pages PREVIEW deployment (which gets its own <hash>.rsvp-points-portal.pages.dev
+# origin) will be refused until you add it here. Production only, by design.
+ALLOWED_ORIGINS = "https://rsvp-points-portal.pc937.workers.dev,http://localhost:8790"
 
 # The Google OAuth client ID the frontend signs in with.
 GOOGLE_CLIENT_ID = "32532424958-umer4n322a63nphfbnl0gkcqtrq92ms8.apps.googleusercontent.com"
