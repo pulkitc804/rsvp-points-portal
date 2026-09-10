@@ -10,7 +10,7 @@ the code that implements it and the test that proves it.
 | Deploy and understand the existing Cloudflare Worker | `worker/` — verify token, extract email, read Sheet CSV, return that member's row, as described in the brief | `npm test`; README documents each stage |
 | Set up Google Sign-In on the frontend and connect it to the Worker | `web/app.js` (Google Identity Services) → `GET /api/me` | Verified in browser; four states screenshotted |
 | Restrict access appropriately to Rutgers/RSVP members | Two-stage check: `config.js` `domainAllowed()` then roster lookup | `security.test.mjs` — Gmail refused, Gmail-in-Sheet refused |
-| Explicitly enforce the Rutgers email domain rather than only checking the Sheet | `ALLOWED_DOMAINS`, checked *before* the Sheet is read | "a Gmail address present in the Sheet still cannot sign in" |
+| Explicitly enforce the Rutgers email domain rather than only checking the Sheet | `ALLOWED_DOMAINS`, checked *before* the Sheet is read; plus opt-in `REQUIRE_HOSTED_DOMAIN` for Workspace-only accounts, with the trade-off written up in the README | "a Gmail address present in the Sheet still cannot sign in"; four strict-mode tests |
 | Use Google Sheets as the source of truth | `roster.js`, read fresh per request (30s cache) | "thresholds come from configuration" and roster tests |
 | Clean member dashboard: name, total points, standing | `web/index.html` `#state-dashboard` | Screenshot matches the brief's example exactly |
 | Three standing levels | `standing.js` — `good`, `okay`, `at_risk` | "standing thresholds are inclusive at each boundary" |

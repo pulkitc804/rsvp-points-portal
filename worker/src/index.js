@@ -129,6 +129,22 @@ async function handleMe(request, config, headers) {
     return fail("domain_not_allowed", headers);
   }
 
+  // Stricter, opt-in domain enforcement. `hd` is set by Google only for
+  // Workspace-managed accounts, so requiring it also rejects a consumer
+  // Google account that merely uses a Rutgers address as its login. It is
+  // off by default because Rutgers issues rutgers.edu addresses that are not
+  // all Google-managed, and turning this on without checking would lock
+  // those members out. See README, "Enforcing the Rutgers domain".
+  if (config.requireHostedDomain) {
+    const hostedDomain = String(identity.hostedDomain ?? "").toLowerCase();
+    if (!hostedDomain || !config.allowedDomains.includes(hostedDomain)) {
+      console.warn(
+        `Rejected ${identity.email}: hosted domain "${hostedDomain || "none"}" not allowed.`
+      );
+      return fail("domain_not_allowed", headers);
+    }
+  }
+
   const roster = await readRoster(config);
   if (roster.duplicates.length > 0) {
     console.warn(

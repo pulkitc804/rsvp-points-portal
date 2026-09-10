@@ -15,6 +15,12 @@ THRESHOLD_OKAY = "6"
 # Only these email domains may sign in at all, even if the address is in the Sheet.
 ALLOWED_DOMAINS = "scarletmail.rutgers.edu,rutgers.edu"
 
+# Stricter: also require Google to report the account as managed by one of
+# those domains, which rejects a personal Google account that uses a Rutgers
+# address as its login. Verify every member is a Google Workspace account
+# before turning this on. See README, "Enforcing the Rutgers domain".
+REQUIRE_HOSTED_DOMAIN = "false"
+
 # Which sites may call this Worker. Add the Pages URL once the frontend is deployed.
 ALLOWED_ORIGINS = "http://localhost:8788,http://127.0.0.1:8788"
 

@@ -22,9 +22,11 @@ worker/          Cloudflare Worker — the only thing that reads the Sheet
     standing.js      points -> standing, from configured thresholds
     config.js        env vars, validated at request time
     csv.js           RFC 4180 CSV parser
-  test/          42 tests, including the attacks the brief asks us to prevent
+  test/          46 tests, including the attacks the brief asks us to prevent
 web/             Static frontend — deploy to Cloudflare Pages
   index.html         four states: sign in, loading, dashboard, error
+                     laid out as a member credential: printed band, standing,
+                     tear-off stub carrying the verified name and email
   app.js             Google Sign-In, fetches /api/me, renders
   styles.css         mobile first, light and dark
   config.js          public client ID and Worker URL
@@ -66,6 +68,36 @@ reasons and deserve different messages:
 The domain check runs **before** the Sheet is read. A Gmail address that
 somehow ends up in the Sheet still cannot sign in — membership in the Sheet is
 not by itself sufficient authorization.
+
+## Enforcing the Rutgers domain
+
+The brief asks us to investigate enforcing the Rutgers email domain rather
+than only checking whether the email appears in the Sheet. There are two
+checks available, and they are not equivalent.
+
+**Email domain (`ALLOWED_DOMAINS`, on by default).** The verified token's
+email must end in an allowed domain. This is what stops a personal Gmail
+address, including one that has somehow been added to the Sheet. It is
+reliable because the email comes from the signed token, not the browser.
+
+**Hosted domain (`REQUIRE_HOSTED_DOMAIN`, off by default).** Google sets an
+`hd` claim only for accounts managed by a Google Workspace domain. Requiring
+it additionally rejects a *consumer* Google account that happens to use a
+Rutgers address as its login — someone can create a personal Google account
+against an email they control, and that account's token carries a Rutgers
+email with no `hd`.
+
+It ships off because turning it on has a real failure mode: Rutgers issues
+`scarletmail.rutgers.edu` through Google Workspace, but `rutgers.edu`
+addresses are not all Google-managed. Enabling it before confirming every
+member's account is a Workspace account would lock out exactly the faculty
+and staff addresses the club may want to admit.
+
+**Recommendation:** leave it off for V1. Once the roster is real, check
+whether every member signs in with a scarletmail address; if so, set
+`REQUIRE_HOSTED_DOMAIN = "true"` and narrow `ALLOWED_DOMAINS` to
+`scarletmail.rutgers.edu`. That combination is the strongest posture
+available without a custom allowlist.
 
 ## Setup
 
@@ -171,6 +203,7 @@ under **Workers & Pages → rsvp-points-worker → Settings → Variables**.
 | `THRESHOLD_GOOD` | `12` | Points for Good Standing |
 | `THRESHOLD_OKAY` | `6` | Floor for Okay Standing; below this is At Risk |
 | `ALLOWED_DOMAINS` | `scarletmail.rutgers.edu,rutgers.edu` | Who may sign in at all |
+| `REQUIRE_HOSTED_DOMAIN` | `false` | Also require a Google Workspace-managed account (see below) |
 | `ALLOWED_ORIGINS` | localhost | Which sites may call the Worker |
 | `GOOGLE_CLIENT_ID` | — | Which OAuth app tokens must be issued for |
 | `SHEET_CSV_URL` | — | Which Sheet is the roster |
@@ -205,13 +238,38 @@ check failed; the details go to `wrangler tail` instead. Telling someone
 probing the endpoint exactly which check rejected them helps them and does not
 help a real member.
 
+## Design
+
+The card is a member credential rather than a generic dashboard panel: a
+printed band, the standing, and a tear-off stub carrying the verified name
+and email.
+
+Colours follow RSVP's logo — orange, blue, white. **Two CSS variables at the
+top of `web/styles.css` carry the brand:**
+
+```css
+--orange: #ef7622;   /* the credential band */
+--navy:   #123a6b;   /* type and structure */
+```
+
+Every other colour is derived from those two, so correcting them re-skins the
+whole portal. If the exact logo hexes differ from these, change those two
+lines and nothing else. One constraint to keep: white type on this orange is
+only 2.9:1, so the band's own type is navy. If you swap in a darker orange,
+the band text can go white.
+
+Standing is shown three ways at once — a written label, a colour, and a
+three-rung ladder — so it never depends on colour alone, and so the ladder
+can encode position against RSVP's thresholds without ranking members
+against each other.
+
 ## Tests
 
 ```bash
 cd worker && npm test
 ```
 
-42 tests, no cloud accounts needed. The security tests generate a real RSA
+46 tests, no cloud accounts needed. The security tests generate a real RSA
 keypair and sign real tokens, so the signature path is genuinely exercised
 rather than stubbed out. Each attack in the brief has a test:
 

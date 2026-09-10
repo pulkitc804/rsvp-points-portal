@@ -265,3 +265,34 @@ test("unknown paths 404", async () => {
   const response = await worker.fetch(request(null, { path: "/api/members" }), TEST_ENV);
   assert.equal(response.status, 404);
 });
+
+// --- Optional stricter domain enforcement (REQUIRE_HOSTED_DOMAIN) ----------
+
+const STRICT_ENV = { ...TEST_ENV, REQUIRE_HOSTED_DOMAIN: "true" };
+
+test("strict mode accepts a Rutgers Workspace account", async () => {
+  const token = await signToken(google, validPayload({ hd: "scarletmail.rutgers.edu" }));
+  const { response } = await call(token, {}, STRICT_ENV);
+  assert.equal(response.status, 200);
+});
+
+test("strict mode rejects a consumer account using a Rutgers address", async () => {
+  // No `hd` claim: Google is telling us this account is not domain-managed,
+  // even though its email ends in a Rutgers domain.
+  const token = await signToken(google, validPayload({ hd: undefined }));
+  const { response, body } = await call(token, {}, STRICT_ENV);
+  assert.equal(response.status, 403);
+  assert.equal(body.error, "domain_not_allowed");
+});
+
+test("strict mode rejects a Workspace account from another domain", async () => {
+  const token = await signToken(google, validPayload({ hd: "someothercollege.edu" }));
+  const { response } = await call(token, {}, STRICT_ENV);
+  assert.equal(response.status, 403);
+});
+
+test("default mode admits a Rutgers address with no hosted domain", async () => {
+  const token = await signToken(google, validPayload({ hd: undefined }));
+  const { response } = await call(token);
+  assert.equal(response.status, 200);
+});

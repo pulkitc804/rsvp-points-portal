@@ -13,39 +13,47 @@
 
   // The ID token lives in a closure variable, not localStorage. A token in
   // localStorage survives until it expires and is readable by any script on
-  // the page; this one disappears when the tab closes, and Google silently
-  // re-issues it on the next visit.
+  // the page; this one disappears with the tab, and Google silently re-issues
+  // it on the next visit.
   var idToken = null;
 
+  var byId = function (id) { return document.getElementById(id); };
+
   var el = {
-    signin: document.getElementById("state-signin"),
-    loading: document.getElementById("state-loading"),
-    dashboard: document.getElementById("state-dashboard"),
-    error: document.getElementById("state-error"),
-    googleButton: document.getElementById("google-button"),
-    firstName: document.getElementById("first-name"),
-    points: document.getElementById("points-value"),
-    standing: document.getElementById("standing-pill"),
-    standingMessage: document.getElementById("standing-message"),
-    progressWrap: document.getElementById("progress-wrap"),
-    progressFill: document.getElementById("progress-fill"),
-    progressNote: document.getElementById("progress-note"),
-    signedInAs: document.getElementById("signed-in-as"),
-    signOut: document.getElementById("signout"),
-    errorTitle: document.getElementById("error-title"),
-    errorMessage: document.getElementById("error-message"),
-    errorRetry: document.getElementById("error-retry"),
-    errorSignOut: document.getElementById("error-signout")
+    bandLabel: byId("band-label"),
+    stub: byId("stub"),
+    signin: byId("state-signin"),
+    loading: byId("state-loading"),
+    dashboard: byId("state-dashboard"),
+    error: byId("state-error"),
+    googleButton: byId("google-button"),
+    firstName: byId("first-name"),
+    points: byId("points-value"),
+    standing: byId("standing-pill"),
+    standingMessage: byId("standing-message"),
+    nextStep: byId("next-step"),
+    ladder: byId("ladder"),
+    memberName: byId("member-name"),
+    signedInAs: byId("signed-in-as"),
+    signOut: byId("signout"),
+    errorTitle: byId("error-title"),
+    errorMessage: byId("error-message"),
+    errorRetry: byId("error-retry"),
+    errorSignOut: byId("error-signout")
   };
 
-  function show(state) {
-    [el.signin, el.loading, el.dashboard, el.error].forEach(function (section) {
-      section.hidden = section !== state;
+  var LADDER_ORDER = ["at_risk", "okay", "good"];
+
+  function show(state, bandLabel) {
+    [el.signin, el.loading, el.dashboard, el.error].forEach(function (panel) {
+      panel.hidden = panel !== state;
     });
+    el.bandLabel.textContent = bandLabel;
+    el.stub.hidden = state !== el.dashboard;
   }
 
   /**
-   * Error copy lives here so that every failure a member can see says what
+   * Error copy lives here so every failure a member can see says what
    * happened and what to do next. The Worker sends its own message too; we
    * prefer ours when we recognise the code, since we can phrase it for the
    * screen it appears on.
@@ -54,25 +62,23 @@
     domain_not_allowed: {
       title: "Use your Rutgers account",
       message:
-        "That looks like a personal Google account. Sign out and choose your @scarletmail.rutgers.edu or @rutgers.edu account instead.",
-      retry: false
+        "That looks like a personal Google account. Choose your scarletmail.rutgers.edu or rutgers.edu account instead.",
+      reauth: true
     },
     not_a_member: {
       title: "You're not on the list yet",
       message:
         "You signed in successfully, but your Rutgers email isn't on the RSVP member list. Reach out to the E-Board and ask to be added.",
-      retry: false
+      reauth: true
     },
     invalid_token: {
       title: "Please sign in again",
       message: "We couldn't verify your sign-in. Signing in again usually fixes it.",
-      retry: false,
       reauth: true
     },
     expired_token: {
       title: "Your sign-in expired",
       message: "Sign in again to see your current points.",
-      retry: false,
       reauth: true
     },
     roster_unavailable: {
@@ -113,10 +119,42 @@
     el.errorTitle.textContent = spec.title;
     el.errorMessage.textContent = spec.message;
     el.errorRetry.hidden = !spec.retry;
-    // "Sign in with a different account" only helps when the problem is which
-    // account they used.
-    el.errorSignOut.hidden = !(spec.reauth || code === "domain_not_allowed" || code === "not_a_member");
-    show(el.error);
+    // "Use a different account" only helps when the problem is which account
+    // they signed in with.
+    el.errorSignOut.hidden = !spec.reauth;
+    show(el.error, "Notice");
+  }
+
+  function renderLadder(standing) {
+    var reachedTo = LADDER_ORDER.indexOf(standing);
+    LADDER_ORDER.forEach(function (level, index) {
+      var rung = el.ladder.querySelector('[data-rung="' + level + '"]');
+      if (!rung) return;
+      rung.setAttribute("data-reached", String(index <= reachedTo));
+      rung.setAttribute("data-current", String(index === reachedTo));
+    });
+  }
+
+  /**
+   * Answers the obvious follow-up question to a points total: how many more
+   * do I need? Compares the member only against RSVP's thresholds, never
+   * against another member.
+   */
+  function renderNextStep(member, thresholds) {
+    if (!thresholds || member.standing === "good") {
+      el.nextStep.hidden = true;
+      return;
+    }
+
+    var target = member.standing === "okay" ? thresholds.good : thresholds.okay;
+    var nextLabel = member.standing === "okay" ? "Good Standing" : "Okay Standing";
+    var remaining = Math.max(0, target - member.points);
+
+    el.nextStep.textContent =
+      remaining === 1
+        ? "1 more point reaches " + nextLabel + "."
+        : remaining + " more points reach " + nextLabel + ".";
+    el.nextStep.hidden = false;
   }
 
   function renderDashboard(data) {
@@ -127,43 +165,22 @@
     el.standing.textContent = member.standingLabel;
     el.standing.setAttribute("data-standing", member.standing);
     el.standingMessage.textContent = member.standingMessage;
-    el.signedInAs.textContent = "Signed in as " + member.email;
+    el.ladder.setAttribute("aria-label", "Standing: " + member.standingLabel);
+    el.memberName.textContent = member.name;
+    el.signedInAs.textContent = member.email;
 
-    renderProgress(member, data.thresholds);
-    show(el.dashboard);
-  }
-
-  /**
-   * Not a leaderboard — it compares a member only against the threshold, and
-   * never against other members. It exists so "6 points" answers the obvious
-   * follow-up question: how many more do I need?
-   */
-  function renderProgress(member, thresholds) {
-    if (!thresholds || member.standing === "good") {
-      el.progressWrap.hidden = true;
-      return;
-    }
-
-    var target = member.standing === "okay" ? thresholds.good : thresholds.okay;
-    var nextLabel = member.standing === "okay" ? "Good Standing" : "Okay Standing";
-    var remaining = Math.max(0, target - member.points);
-    var percent = target > 0 ? Math.min(100, Math.round((member.points / target) * 100)) : 0;
-
-    el.progressFill.style.width = percent + "%";
-    el.progressNote.textContent =
-      remaining === 1
-        ? "1 more point reaches " + nextLabel + "."
-        : remaining + " more points reach " + nextLabel + ".";
-    el.progressWrap.hidden = false;
+    renderLadder(member.standing);
+    renderNextStep(member, data.thresholds);
+    show(el.dashboard, "Member Standing");
   }
 
   function loadPoints() {
     if (!idToken) {
-      show(el.signin);
+      show(el.signin, "Member Portal");
       return;
     }
 
-    show(el.loading);
+    show(el.loading, "Member Standing");
 
     fetch(config.WORKER_URL.replace(/\/+$/, "") + "/api/me", {
       method: "GET",
@@ -172,9 +189,7 @@
       .then(function (response) {
         return response
           .json()
-          .catch(function () {
-            return {};
-          })
+          .catch(function () { return {}; })
           .then(function (body) {
             return { ok: response.ok, status: response.status, body: body };
           });
@@ -199,11 +214,13 @@
 
   function signOut() {
     idToken = null;
+    el.memberName.textContent = "";
+    el.signedInAs.textContent = "";
     if (window.google && google.accounts && google.accounts.id) {
       // Stops Google from silently signing the same account straight back in.
       google.accounts.id.disableAutoSelect();
     }
-    show(el.signin);
+    show(el.signin, "Member Portal");
   }
 
   el.signOut.addEventListener("click", signOut);
@@ -216,7 +233,7 @@
       "web/config.js is missing " + missing.join(" and ") + ". Fill it in, then reload.";
     el.errorRetry.hidden = true;
     el.errorSignOut.hidden = true;
-    show(el.error);
+    show(el.error, "Notice");
   }
 
   // Google's script is loaded async and calls this when it is ready.
@@ -240,15 +257,15 @@
       theme: "outline",
       size: "large",
       text: "signin_with",
-      shape: "pill",
+      shape: "rectangular",
       logo_alignment: "left"
     });
 
-    show(el.signin);
+    show(el.signin, "Member Portal");
     // If this member signed in recently, Google returns a token without a
-    // click and the dashboard appears directly.
+    // click and the credential appears directly.
     google.accounts.id.prompt();
   };
 
-  show(el.signin);
+  show(el.signin, "Member Portal");
 })();

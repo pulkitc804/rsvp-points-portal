@@ -25,6 +25,10 @@ function list(value) {
     .filter(Boolean);
 }
 
+function flag(value) {
+  return /^(true|1|yes)$/i.test(text(value));
+}
+
 function wholeNumber(value, name, fallback, problems) {
   const raw = text(value);
   if (!raw) return fallback;
@@ -67,6 +71,7 @@ export function loadConfig(env = {}) {
     sheetCsvUrl,
     allowedDomains,
     allowedOrigins: list(env.ALLOWED_ORIGINS),
+    requireHostedDomain: flag(env.REQUIRE_HOSTED_DOMAIN),
     thresholds: { good, okay },
     sheetCacheSeconds: wholeNumber(
       env.SHEET_CACHE_SECONDS,
