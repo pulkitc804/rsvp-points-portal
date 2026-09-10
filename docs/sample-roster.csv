@@ -1,0 +1,7 @@
+Email,Name,Points,Standing
+abc123@scarletmail.rutgers.edu,John Smith,14,Good Standing
+xyz456@scarletmail.rutgers.edu,Jane Doe,7,Okay Standing
+low789@scarletmail.rutgers.edu,Sam Lee,3,At Risk
+edge012@scarletmail.rutgers.edu,Edge Exactly-Good,12,Good Standing
+edge345@scarletmail.rutgers.edu,Edge Exactly-Okay,6,Okay Standing
+zero678@rutgers.edu,Zoe Newcomer,0,At Risk

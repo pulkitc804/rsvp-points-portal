@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RSVP Points Portal</title>
+  <meta name="description" content="Check your Rutgers RSVP points and membership standing.">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <p class="org">Rutgers RSVP</p>
+      <h1>Points Portal</h1>
+    </header>
+
+    <!-- Every state below is a designed state; the app shows exactly one. -->
+
+    <section id="state-signin" class="card" hidden>
+      <h2>Check your points</h2>
+      <p class="lede">Sign in with your Rutgers Google account to see your current points and membership standing.</p>
+      <div id="google-button" class="gbutton"></div>
+      <p class="fineprint">Use your <strong>@scarletmail.rutgers.edu</strong> or <strong>@rutgers.edu</strong> account.</p>
+    </section>
+
+    <section id="state-loading" class="card" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="lede" role="status">Looking up your points…</p>
+    </section>
+
+    <section id="state-dashboard" class="card" hidden>
+      <p class="welcome">Welcome, <span id="first-name"></span></p>
+
+      <div class="points">
+        <span id="points-value" class="points-value"></span>
+        <span class="points-label">Points</span>
+      </div>
+
+      <p id="standing-pill" class="standing"></p>
+      <p id="standing-message" class="standing-message"></p>
+
+      <div class="progress" id="progress-wrap" hidden>
+        <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+        <p id="progress-note" class="fineprint"></p>
+      </div>
+
+      <footer class="card-footer">
+        <p id="signed-in-as" class="fineprint"></p>
+        <button id="signout" type="button" class="link-button">Sign out</button>
+      </footer>
+    </section>
+
+    <section id="state-error" class="card" hidden>
+      <h2 id="error-title">Something went wrong</h2>
+      <p id="error-message" class="lede" role="alert"></p>
+      <button id="error-retry" type="button" class="button">Try again</button>
+      <button id="error-signout" type="button" class="link-button">Sign in with a different account</button>
+    </section>
+
+    <p class="attribution">Points are maintained by the RSVP E-Board.</p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+name = "rsvp-points-worker"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# ---------------------------------------------------------------------------
+# Configuration the E-Board can change without touching code.
+# Edit here and redeploy, or change them in the Cloudflare dashboard under
+# Workers & Pages -> rsvp-points-worker -> Settings -> Variables.
+# ---------------------------------------------------------------------------
+[vars]
+# Points needed for each standing. GOOD must be greater than OKAY.
+THRESHOLD_GOOD = "12"
+THRESHOLD_OKAY = "6"
+
+# Only these email domains may sign in at all, even if the address is in the Sheet.
+ALLOWED_DOMAINS = "scarletmail.rutgers.edu,rutgers.edu"
+
+# Which sites may call this Worker. Add the Pages URL once the frontend is deployed.
+ALLOWED_ORIGINS = "http://localhost:8788,http://127.0.0.1:8788"
+
+# The Google OAuth client ID the frontend signs in with.
+GOOGLE_CLIENT_ID = ""
+
+# The member roster: File -> Share -> Publish to web -> Comma-separated values (.csv)
+SHEET_CSV_URL = ""
+
+# How long the Worker may reuse a cached copy of the Sheet, in seconds.
+SHEET_CACHE_SECONDS = "30"
