@@ -62,8 +62,8 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 17px;
-  line-height: 1.55;
+  font-size: clamp(17px, 1.35vw + 12px, 22px);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   display: flex;
   justify-content: center;
@@ -72,7 +72,7 @@ body {
 
 .page {
   width: 100%;
-  max-width: 460px;
+  max-width: 620px;
   text-align: center;
 }
 
@@ -85,10 +85,10 @@ body {
   gap: 13px;
 }
 
-.mark { width: 40px; height: 42px; display: block; }
+.mark { width: clamp(40px, 6vw, 64px); height: auto; display: block; }
 
 .brand-name {
-  font-size: 30px;
+  font-size: clamp(30px, 5.4vw, 52px);
   font-weight: 600;
   letter-spacing: .02em;
   line-height: 1;
@@ -98,7 +98,7 @@ body {
   margin: 22px 0 0;
   padding-bottom: 22px;
   border-bottom: 1px solid var(--rule);
-  font-size: 21px;
+  font-size: clamp(21px, 2.6vw, 30px);
   font-weight: 500;
   letter-spacing: -.01em;
   line-height: 1.2;
@@ -106,10 +106,11 @@ body {
 }
 
 .subtitle {
-  margin: 0 0 10px;
-  font-size: 22px;
+  margin: 0 0 12px;
+  font-size: clamp(22px, 3.2vw, 34px);
   font-weight: 600;
   letter-spacing: -.015em;
+  line-height: 1.15;
 }
 
 .block { padding-top: 30px; }
@@ -118,7 +119,7 @@ body {
   margin: 0 auto;
   max-width: 40ch;
   color: var(--ink-soft);
-  font-size: 17px;
+  font-size: clamp(17px, 1.7vw + 10px, 24px);
   text-wrap: pretty;
 }
 
@@ -133,20 +134,25 @@ body {
 
 .identity { margin: 0; display: flex; flex-direction: column; align-items: center; }
 
-.identity-greeting { font-size: 21px; font-weight: 600; letter-spacing: -.01em; }
+.identity-greeting {
+  font-size: clamp(21px, 3.4vw, 36px);
+  font-weight: 600;
+  letter-spacing: -.015em;
+  line-height: 1.1;
+}
 
 .identity-detail {
-  margin-top: 4px;
+  margin-top: 5px;
   color: var(--ink-soft);
-  font-size: 16px;
+  font-size: clamp(16px, 1.5vw + 9px, 22px);
 }
 
 /* Its own line: centred text with a middot separator leaves the separator
    dangling at the wrap point on narrow screens. */
 .identity-email {
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--ink-faint);
-  font-size: 14.5px;
+  font-size: clamp(14.5px, 1.2vw + 9px, 19px);
   word-break: break-word;
 }
 
@@ -163,26 +169,31 @@ body {
 .metric { margin: 0; display: flex; flex-direction: column; align-items: center; }
 
 .metric-value {
-  font-size: 84px;
+  font-size: clamp(84px, 15vw, 168px);
   font-weight: 600;
-  line-height: .95;
-  letter-spacing: -.04em;
+  line-height: .92;
+  letter-spacing: -.045em;
   font-variant-numeric: tabular-nums;
   margin-right: -.04em;
 }
 
 .metric-label {
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--ink-faint);
-  font-size: 13px;
+  font-size: clamp(13px, 1vw + 9px, 18px);
   font-weight: 500;
-  letter-spacing: .16em;
+  letter-spacing: .18em;
   text-transform: uppercase;
 }
 
 /* Standing carries a written label, not just a colour, so meaning never
    depends on colour alone. */
-.status { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.005em; }
+.status {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 32px);
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
 .status[data-standing="good"]    { color: var(--good); }
 .status[data-standing="okay"]    { color: var(--okay); }
 .status[data-standing="at_risk"] { color: var(--risk); }
@@ -213,7 +224,7 @@ body {
   background: var(--ink);
   color: var(--bg);
   font-family: inherit;
-  font-size: 16px;
+  font-size: clamp(16px, 1.3vw + 10px, 20px);
   font-weight: 500;
   cursor: pointer;
   transition: opacity .15s ease;
@@ -227,7 +238,7 @@ body {
   background: none;
   color: var(--accent);
   font-family: inherit;
-  font-size: 16px;
+  font-size: clamp(16px, 1.3vw + 10px, 20px);
   cursor: pointer;
 }
 .text-button:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -246,9 +257,9 @@ body {
 }
 
 .colophon {
-  margin: 44px 0 0;
+  margin: 48px 0 0;
   color: var(--ink-faint);
-  font-size: 14px;
+  font-size: clamp(14px, 1.1vw + 9px, 18px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -257,7 +268,4 @@ body {
 
 @media (min-width: 560px) {
   body { padding: 60px 40px; }
-  .brand-name { font-size: 34px; }
-  .mark { width: 46px; height: 48px; }
-  .metric-value { font-size: 96px; }
 }

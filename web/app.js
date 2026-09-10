@@ -242,7 +242,7 @@
       size: "large",
       text: "signin_with",
       shape: "rectangular",
-      width: 260,
+      width: 320,
       logo_alignment: "left"
     });
 
