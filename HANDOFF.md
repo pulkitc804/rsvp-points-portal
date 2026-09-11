@@ -1,8 +1,12 @@
 # Handing the portal over to RSVP
 
-V1 was built on personal accounts, as the E-Board suggested. Four things need
-to move. None of them require code changes — the portal reads all of its
-configuration from environment variables.
+V1 was built on personal accounts, as the E-Board asked. Four things need to
+move: the Sheet, the Google Cloud project, the Cloudflare account, and this
+repository. None of them require code changes — the portal reads all of its
+configuration from environment variables and secrets.
+
+Read the "Internal" warning under section 2 before deciding who owns the
+Google Cloud project. It is the one choice here that is awkward to reverse.
 
 ## 1. The Google Sheet
 
@@ -11,8 +15,20 @@ Easiest of the four. Transfer ownership to an RSVP-controlled Google account
 from that account and update `SHEET_CSV_URL` on the Worker.
 
 Publishing produces a *new* URL when the owner changes, so the Worker will
-return `roster_unavailable` until the variable is updated. Do these two steps
+return `roster_unavailable` until the value is updated. Do these two steps
 together.
+
+The roster URL is stored as a Cloudflare **secret**, not a plain variable,
+because anyone holding that link can read the whole roster. Secrets do **not**
+carry across to a different Cloudflare account, so after redeploying there,
+set it again:
+
+```bash
+cd worker && npx wrangler secret put SHEET_CSV_URL
+```
+
+`npx wrangler secret list` shows the name without the value. It deliberately
+appears nowhere in this repository or its git history.
 
 ## 2. The Google OAuth client
 
@@ -26,9 +42,25 @@ The client ID lives in a Google Cloud project. Two options:
   authorized JavaScript origins. Every signed-in member is signed out when the
   client ID changes.
 
-Whoever owns the consent screen also controls whether the app stays in
-"testing" mode, which caps it at 100 test users. For a club roster that limit
-is worth checking before an event, not after.
+### The app is set to "Internal" — do not lose this by accident
+
+The OAuth consent screen is currently **Internal**, which is the best setting
+for this portal: any Rutgers Google account can sign in, there is no list of
+test users to maintain, there is no user cap, and Google itself blocks
+non-Rutgers accounts before a request ever reaches our code.
+
+**Internal is only available because the Cloud project lives inside Rutgers'
+Google Workspace.** If the project is moved to an ordinary Gmail account — an
+`rsvp.eboard@gmail.com`, for instance — Internal stops being an option. The
+app falls back to **External**, which starts in "Testing" mode with a hard cap
+of **100 users for the lifetime of the app**, and only accounts added to a
+test-user list can sign in at all.
+
+So when choosing who owns the Cloud project, prefer a **Rutgers** account held
+by an E-Board officer over a club Gmail. If a club Gmail is unavoidable, plan
+for the External path: complete the Branding page, then **Publish app**, which
+removes the cap. No Google verification review is needed, because this app
+only requests `openid`, `email` and `profile`.
 
 ## The URLs are expected to change — that is fine
 
@@ -89,10 +121,17 @@ defers the problem.
 
 ## 4. This repository
 
-Push it to an RSVP-owned GitHub organization. Nothing in the repo is secret:
-the Google client ID and Worker URL are public by design, and `.gitignore`
-excludes `.dev.vars` and `.wrangler/`. There are no API keys or client secrets
-anywhere in the project — the portal never needs one.
+It currently lives at **github.com/pulkitc804/rsvp-points-portal** and is
+**public**, so anyone can read it without being added. Transfer it to an
+RSVP-owned account or organisation (Settings → General → Transfer ownership),
+or fork it there.
+
+Nothing in the repo is secret, and that was verified across the full commit
+history rather than just the current files: the Google client ID and the
+Worker URLs are public by design, the roster URL is a Cloudflare secret that
+was never committed, and `.gitignore` excludes `.dev.vars` and `.wrangler/`.
+There are no API keys or client secrets anywhere in the project — the portal
+never needs one.
 
 ## Verifying after the move
 
@@ -105,15 +144,21 @@ Work through these in order; each one catches a different missed step.
    Sheet. Correct name, points, and standing.
 3. Sign in with a Rutgers account that is **not** in the Sheet. Expect
    "You're not on the list yet".
-4. Sign in with a personal Gmail. Expect "Use your Rutgers account".
+4. Sign in with a personal Gmail. While the app is **Internal**, Google
+   blocks it with its own error before the portal is reached — that is the
+   correct result. If the app is ever switched to External, the same attempt
+   reaches the portal instead and shows "Use your Rutgers account". Both are
+   correct; they just come from different places.
 5. Edit a member's points in the Sheet, wait 30 seconds, reload. The new
    number appears.
 6. Open devtools, Network tab, and confirm the request to `/api/me` carries
    only an `Authorization` header — no email anywhere in the request.
 
-If sign-in silently does nothing, the cause is almost always step 3 of the
-Cloudflare section: the new Pages origin is missing from either
-`ALLOWED_ORIGINS` or Google's authorized origins.
+If sign-in silently does nothing, the cause is almost always the portal's new
+origin missing from either the Worker's `ALLOWED_ORIGINS` or Google's
+authorized JavaScript origins. Those two and `WORKER_URL` must all agree;
+`./scripts/set-urls.sh` handles the first and third and tells you the exact
+string for the second.
 
 ## Who to hand it to
 
