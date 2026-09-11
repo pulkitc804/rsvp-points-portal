@@ -52,15 +52,30 @@ function decodeJson(segment) {
   }
 }
 
+const UNREACHABLE = "Could not reach Google to verify your sign-in.";
+
 async function fetchKeys(fetchImpl, now) {
-  const response = await fetchImpl(JWKS_URL);
-  if (!response.ok) {
-    throw new AuthError(
-      "verification_unavailable",
-      "Could not reach Google to verify your sign-in."
-    );
+  // An outage is a THROWN fetch — DNS failure, TLS error, connection reset —
+  // not a tidy non-200. Letting that escape turned a transient blip into
+  // "the portal is not configured correctly", which is both wrong and
+  // unactionable for the member.
+  let response;
+  try {
+    response = await fetchImpl(JWKS_URL);
+  } catch {
+    throw new AuthError("verification_unavailable", UNREACHABLE);
   }
-  const body = await response.json();
+  if (!response.ok) {
+    throw new AuthError("verification_unavailable", UNREACHABLE);
+  }
+
+  // A captive portal or proxy can answer 200 with HTML.
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    throw new AuthError("verification_unavailable", UNREACHABLE);
+  }
   const keys = Array.isArray(body?.keys) ? body.keys : [];
 
   // Respect Google's cache header; fall back to an hour.
@@ -125,13 +140,19 @@ export async function verifyGoogleIdToken(token, options) {
   }
 
   const jwk = await keyFor(header.kid, fetchImpl, now);
-  const key = await subtle.importKey(
-    "jwk",
-    { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: "RS256", ext: true },
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["verify"]
-  );
+  let key;
+  try {
+    key = await subtle.importKey(
+      "jwk",
+      { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: "RS256", ext: true },
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+  } catch {
+    // A key we cannot import is Google's problem, not the member's.
+    throw new AuthError("verification_unavailable", UNREACHABLE);
+  }
 
   const signed = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
   const valid = await subtle.verify(

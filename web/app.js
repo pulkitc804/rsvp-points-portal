@@ -17,6 +17,14 @@
   // it on the next visit.
   var idToken = null;
 
+  // If Google's script never loads (offline, accounts.google.com blocked, a
+  // CSP directive that needs widening), onGoogleLibraryLoad never fires and
+  // the member is left staring at sign-in copy above an empty button slot
+  // with no explanation. Fail visibly instead.
+  var GOOGLE_LOAD_TIMEOUT_MS = 8000;
+  var googleReady = false;
+  var currentErrorCode = null;
+
   var byId = function (id) { return document.getElementById(id); };
 
   var el = {
@@ -98,6 +106,17 @@
       message: "The portal is still being set up. Please contact the E-Board.",
       retry: false
     },
+    internal_error: {
+      title: "Something went wrong",
+      message: "That's on our end, not yours. Try again in a moment.",
+      retry: true
+    },
+    google_unavailable: {
+      title: "Google sign-in didn't load",
+      message:
+        "We couldn't load Google's sign-in. Check your connection and reload the page.",
+      retry: true
+    },
     network: {
       title: "No connection",
       message: "We couldn't reach the portal. Check your connection and try again.",
@@ -112,6 +131,7 @@
       retry: true
     };
 
+    currentErrorCode = code;
     el.errorTitle.textContent = spec.title;
     el.errorMessage.textContent = spec.message;
     el.errorRetry.hidden = !spec.retry;
@@ -209,7 +229,15 @@
 
   el.signOut.addEventListener("click", signOut);
   el.errorSignOut.addEventListener("click", signOut);
-  el.errorRetry.addEventListener("click", loadPoints);
+  el.errorRetry.addEventListener("click", function () {
+    // Retrying a failed script load means reloading the page; retrying a
+    // failed lookup means asking the Worker again.
+    if (currentErrorCode === "google_unavailable") {
+      window.location.reload();
+      return;
+    }
+    loadPoints();
+  });
 
   function setupNeeded(missing) {
     el.errorTitle.textContent = "Setup incomplete";
@@ -222,6 +250,7 @@
 
   // Google's script is loaded async and calls this when it is ready.
   window.onGoogleLibraryLoad = function () {
+    googleReady = true;
     var missing = [];
     if (!config.GOOGLE_CLIENT_ID) missing.push("GOOGLE_CLIENT_ID");
     if (!config.WORKER_URL) missing.push("WORKER_URL");
@@ -253,4 +282,8 @@
   };
 
   show(el.signin);
+
+  setTimeout(function () {
+    if (!googleReady) showError("google_unavailable");
+  }, GOOGLE_LOAD_TIMEOUT_MS);
 })();

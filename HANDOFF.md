@@ -36,13 +36,23 @@ Cloudflare has no ownership transfer for a Worker, so the cleanest route is to
 redeploy from an RSVP-owned account:
 
 ```bash
-cd worker
 npx wrangler logout && npx wrangler login   # as the RSVP account
-npx wrangler deploy
-npx wrangler pages deploy web --project-name rsvp-points-portal
 ```
 
-The Worker URL and the Pages URL will both change. That means updating, in
+```bash
+cd worker && npx wrangler deploy
+```
+
+```bash
+npx wrangler deploy -c site.wrangler.jsonc
+```
+
+Run the last command from the repository root, not from `worker/`. The two
+deploys use different config files and different working directories, and
+mixing them up deploys the wrong project while reporting success — see the
+README's "Deploying" section for why.
+
+The API Worker URL and the portal URL will both change. That means updating, in
 order: `WORKER_URL` in `web/config.js`, `ALLOWED_ORIGINS` on the Worker, and
 the authorized JavaScript origins in Google Cloud. Redeploy the frontend after
 editing `config.js`.

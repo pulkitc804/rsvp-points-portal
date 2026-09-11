@@ -332,3 +332,58 @@ test("unknown key ids cannot be used to hammer Google's JWKS endpoint", async ()
     `expected at most 2 JWKS fetches, made ${fetchStub.calls.jwks}`
   );
 });
+
+// --- Findings from the completeness audit ---------------------------------
+
+test("a network failure reaching Google is a retryable 503, not 'portal not configured'", async () => {
+  // A real outage is a thrown fetch (DNS/TLS/reset), not a tidy non-200.
+  globalThis.fetch = async (input) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url.includes("googleapis.com")) throw new TypeError("network error");
+    return new Response(SAMPLE_CSV, { status: 200 });
+  };
+  const token = await signToken(google, validPayload());
+  const response = await worker.fetch(request(token), TEST_ENV);
+  const body = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.equal(body.error, "verification_unavailable");
+});
+
+test("a non-JSON body from Google's key endpoint is also a 503", async () => {
+  globalThis.fetch = async (input) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url.includes("googleapis.com")) {
+      return new Response("<html>proxy error</html>", { status: 200 });
+    }
+    return new Response(SAMPLE_CSV, { status: 200 });
+  };
+  const token = await signToken(google, validPayload());
+  const response = await worker.fetch(request(token), TEST_ENV);
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "verification_unavailable");
+});
+
+test("an unexpected internal failure is retryable, not reported as misconfiguration", async () => {
+  // server_misconfigured tells the member the portal was never set up and
+  // offers no retry. A transient bug must not present that way.
+  globalThis.fetch = async (input) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url.includes("googleapis.com")) {
+      return new Response(JSON.stringify(google.jwks), { status: 200 });
+    }
+    throw { notAnError: true }; // a non-Error throw from the Sheet read
+  };
+  const token = await signToken(google, validPayload());
+  const response = await worker.fetch(request(token), TEST_ENV);
+  const body = await response.json();
+  assert.notEqual(body.error, "server_misconfigured");
+});
+
+test("a malformed SHEET_CACHE_SECONDS is reported, not silently defaulted", async () => {
+  const { loadConfig, ConfigError } = await import("../src/config.js");
+  assert.throws(
+    () => loadConfig({ ...TEST_ENV, SHEET_CACHE_SECONDS: "30s" }),
+    (error) => error instanceof ConfigError && /SHEET_CACHE_SECONDS/.test(error.message)
+  );
+});

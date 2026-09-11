@@ -50,6 +50,10 @@ const FAILURES = {
     status: 500,
     message: "The portal is not configured correctly yet. Please contact the E-Board.",
   },
+  internal_error: {
+    status: 500,
+    message: "Something went wrong on our end. Please try again in a moment.",
+  },
   not_found: { status: 404, message: "Not found." },
   method_not_allowed: { status: 405, message: "Method not allowed." },
 };
@@ -240,8 +244,11 @@ export default {
         console.error(error.message);
         return fail("roster_invalid", headers);
       }
+      // Distinct from server_misconfigured: that one tells the member the
+      // portal was never set up and offers no retry. A transient bug is
+      // retryable and must not be reported as a permanent setup failure.
       console.error("Unexpected failure:", error?.stack ?? error);
-      return fail("server_misconfigured", headers, "Something went wrong. Please try again.");
+      return fail("internal_error", headers);
     }
   },
 };

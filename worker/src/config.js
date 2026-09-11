@@ -56,6 +56,15 @@ export function loadConfig(env = {}) {
   const allowedDomains = list(env.ALLOWED_DOMAINS);
   if (allowedDomains.length === 0) problems.push("ALLOWED_DOMAINS is empty");
 
+  // Computed before the throw below, or its validation complaints are
+  // collected into an array nobody reads and a typo silently defaults.
+  const sheetCacheSeconds = wholeNumber(
+    env.SHEET_CACHE_SECONDS,
+    "SHEET_CACHE_SECONDS",
+    30,
+    problems
+  );
+
   const good = wholeNumber(env.THRESHOLD_GOOD, "THRESHOLD_GOOD", 12, problems);
   const okay = wholeNumber(env.THRESHOLD_OKAY, "THRESHOLD_OKAY", 6, problems);
   if (good <= okay) {
@@ -73,12 +82,7 @@ export function loadConfig(env = {}) {
     allowedOrigins: list(env.ALLOWED_ORIGINS),
     requireHostedDomain: flag(env.REQUIRE_HOSTED_DOMAIN),
     thresholds: { good, okay },
-    sheetCacheSeconds: wholeNumber(
-      env.SHEET_CACHE_SECONDS,
-      "SHEET_CACHE_SECONDS",
-      30,
-      problems
-    ),
+    sheetCacheSeconds,
   };
 }
 

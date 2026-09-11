@@ -243,8 +243,9 @@ the variable that is missing.
 
 ### 4. The frontend
 
-Fill in `web/config.js` with the client ID and the Worker URL, add the Pages
-origin to the Worker's `ALLOWED_ORIGINS`, redeploy the Worker, then:
+Fill in `web/config.js` with the client ID and the Worker URL, add the portal
+origin to the Worker's `ALLOWED_ORIGINS`, redeploy the Worker, then run this
+**from the repository root**:
 
 ```bash
 npx wrangler deploy -c site.wrangler.jsonc
