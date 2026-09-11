@@ -75,6 +75,8 @@ worker/          Cloudflare Worker — the only thing that reads the Sheet
     config.js        env vars, validated at request time
     csv.js           RFC 4180 CSV parser
   test/          48 tests, including the attacks the brief asks us to prevent
+scripts/
+  set-urls.sh        Re-point both Workers at a new account's subdomain
 site.wrangler.jsonc  Deploy config for the frontend (see Deploying)
 web/             Static frontend — deployed as a Worker with static assets
   index.html         four states: sign in, loading, dashboard, error

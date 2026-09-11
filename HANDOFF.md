@@ -30,6 +30,32 @@ Whoever owns the consent screen also controls whether the app stays in
 "testing" mode, which caps it at 100 test users. For a club roster that limit
 is worth checking before an event, not after.
 
+## The URLs are expected to change — that is fine
+
+The current addresses contain `pc937`, which is the *Cloudflare account's*
+subdomain, not part of the project. They look like this today:
+
+```
+https://rsvp-points-portal.pc937.workers.dev    the portal
+https://rsvp-points-worker.pc937.workers.dev    the API
+```
+
+Redeploying under an RSVP-owned account changes both. Only two files in this
+repo carry those URLs, and a script rewrites both:
+
+```bash
+./scripts/set-urls.sh <new-subdomain>
+```
+
+It prints the deploy commands and the exact origin string to add in the
+Google Cloud console. That console step is the one it cannot do for you, and
+skipping it makes sign-in fail **silently** — the button appears to do
+nothing. The script ends with two curl commands that prove whether it worked.
+
+If RSVP would rather the address never change again, register a domain and
+attach it to the Worker as a custom domain. The URL then survives any future
+account move, because the domain is the stable thing rather than the host.
+
 ## 3. The Cloudflare account
 
 Cloudflare has no ownership transfer for a Worker, so the cleanest route is to
