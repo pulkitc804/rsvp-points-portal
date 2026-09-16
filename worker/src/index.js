@@ -11,7 +11,8 @@
  * rather than merely discouraged.
  */
 import { loadConfig, domainAllowed, ConfigError } from "./config.js";
-import { buildRoster, findMember, RosterError } from "./roster.js";
+import { buildRoster, buildRosterFromRows, findMember, RosterError } from "./roster.js";
+import { fetchRosterRows, SheetsError } from "./sheets.js";
 import { describeStanding } from "./standing.js";
 import { verifyGoogleIdToken, AuthError } from "./google-auth.js";
 
@@ -96,6 +97,17 @@ function fail(code, headers, detail) {
 }
 
 async function readRoster(config) {
+  if (config.rosterSource === "api") {
+    try {
+      return buildRosterFromRows(await fetchRosterRows(config));
+    } catch (error) {
+      // A RosterError means the Sheet's shape is wrong, which is a different
+      // problem from not being able to read it at all, and gets its own code.
+      if (error instanceof SheetsError) throw new RosterFetchError(error.message);
+      throw error;
+    }
+  }
+
   let response;
   try {
     response = await fetch(config.sheetCsvUrl, {

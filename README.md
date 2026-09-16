@@ -157,6 +157,57 @@ available without a custom allowlist.
 
 ### 1. The member Sheet
 
+Two ways to read it. **Use the private Sheet unless you have a reason not to** —
+a published CSV is readable by anyone who obtains the link, which means the
+whole roster: every member's name, email and point total.
+
+#### Private Sheet via the Sheets API (recommended)
+
+The Sheet stays private and is shared read-only with a service account — a
+robot Google account that belongs to the project, not to a person, so it
+survives officers graduating.
+
+1. **Google Cloud console → APIs & Services → Library → Google Sheets API →
+   Enable.**
+2. **IAM & Admin → Service Accounts → Create service account.** Name it
+   something like `rsvp-portal-reader`. No roles are needed; its access comes
+   from sharing the Sheet with it, not from project permissions.
+3. On that service account, **Keys → Add key → Create new key → JSON**. A file
+   downloads. It contains `client_email` and `private_key`.
+4. **Share the Sheet with the `client_email` address as a Viewer**, exactly as
+   you would share with a person. Viewer, not Editor — the portal only reads.
+5. **Stop publishing the Sheet** if it was published before: File → Share →
+   Publish to web → Stop publishing. Otherwise the old public link keeps
+   working regardless of what the Worker uses.
+6. Set three secrets on the Worker:
+
+   ```bash
+   cd worker
+   npx wrangler secret put SHEET_ID
+   npx wrangler secret put GOOGLE_SA_EMAIL
+   npx wrangler secret put GOOGLE_SA_PRIVATE_KEY
+   ```
+
+   `SHEET_ID` is the long string in the Sheet's URL between `/d/` and `/edit`.
+   For `GOOGLE_SA_PRIVATE_KEY`, paste the entire `private_key` value from the
+   JSON file, including the `-----BEGIN PRIVATE KEY-----` and `-----END-----`
+   lines. Escaped `\n` newlines are handled either way.
+
+7. Remove the old CSV secret so nothing can fall back to it:
+
+   ```bash
+   npx wrangler secret delete SHEET_CSV_URL
+   ```
+
+8. `npx wrangler deploy`, then check `/api/health`.
+
+If the Sheet is not shared with the service account, the Worker logs the exact
+address to share it with. Setting only some of the three settings is a startup
+error, not a silent fallback to the public CSV — a half-finished migration
+should never quietly downgrade privacy.
+
+#### Published CSV (simpler, public)
+
 Create a Sheet with a header row. Column **order does not matter** and extra
 columns are ignored, because columns are found by name:
 
@@ -281,7 +332,11 @@ under **Workers & Pages → rsvp-points-worker → Settings → Variables**.
 | `REQUIRE_HOSTED_DOMAIN` | `false` | Also require a Google Workspace-managed account (see below) |
 | `ALLOWED_ORIGINS` | localhost | Which sites may call the Worker |
 | `GOOGLE_CLIENT_ID` | — | Which OAuth app tokens must be issued for |
-| `SHEET_CSV_URL` | — | Which Sheet is the roster — **a secret, not a var** (see below) |
+| `SHEET_ID` | — | Private Sheet id — secret; switches to the Sheets API |
+| `GOOGLE_SA_EMAIL` | — | Service account address the Sheet is shared with — secret |
+| `GOOGLE_SA_PRIVATE_KEY` | — | Service account private key — secret |
+| `SHEET_RANGE` | `A:D` | Which range to read, e.g. `Members!A:E` |
+| `SHEET_CSV_URL` | — | Published-CSV fallback — secret; ignored when the API is configured |
 | `SHEET_CACHE_SECONDS` | `30` | How long a cached copy of the Sheet may be reused |
 
 **Changing the thresholds** is two edits and a redeploy; no code changes. The

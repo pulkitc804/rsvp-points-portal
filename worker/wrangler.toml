@@ -29,6 +29,24 @@ ALLOWED_ORIGINS = "https://rsvp-points-portal.pc937.workers.dev,http://localhost
 # The Google OAuth client ID the frontend signs in with.
 GOOGLE_CLIENT_ID = "32532424958-umer4n322a63nphfbnl0gkcqtrq92ms8.apps.googleusercontent.com"
 
+# ---------------------------------------------------------------------------
+# The roster can be read two ways. Prefer the first.
+#
+# 1. PRIVATE SHEET via the Sheets API (recommended). The Sheet stays private
+#    and is shared read-only with a service account. Set three secrets:
+#
+#      npx wrangler secret put SHEET_ID              # from the Sheet's URL
+#      npx wrangler secret put GOOGLE_SA_EMAIL       # ...iam.gserviceaccount.com
+#      npx wrangler secret put GOOGLE_SA_PRIVATE_KEY # private_key from the JSON
+#
+#    Setting any one of them switches the Worker to this mode. Setting only
+#    some is a startup error rather than a silent fall back to the public CSV.
+#
+#    SHEET_RANGE defaults to A:D. Set it if the roster is not on the first
+#    tab or starts elsewhere, e.g. "Members!A:E".
+#
+# 2. PUBLISHED CSV (the original V1 approach, readable by anyone with the link)
+#
 # The member roster URL is deliberately NOT stored here. Anyone holding the
 # published CSV link can read the entire roster, and anything committed to git
 # stays recoverable from history forever. Set it as a Worker secret instead:

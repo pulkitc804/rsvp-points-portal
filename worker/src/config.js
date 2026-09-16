@@ -46,9 +46,27 @@ export function loadConfig(env = {}) {
   const clientId = text(env.GOOGLE_CLIENT_ID);
   if (!clientId) problems.push("GOOGLE_CLIENT_ID is not set");
 
+  // Two ways to read the roster. The Sheets API keeps the Sheet private and
+  // is preferred; the published CSV is the simpler fallback, and is readable
+  // by anyone holding the link.
+  const sheetId = text(env.SHEET_ID);
+  const serviceAccountEmail = text(env.GOOGLE_SA_EMAIL);
+  const serviceAccountKey = text(env.GOOGLE_SA_PRIVATE_KEY);
   const sheetCsvUrl = text(env.SHEET_CSV_URL);
-  if (!sheetCsvUrl) {
-    problems.push("SHEET_CSV_URL is not set");
+
+  // Any one of the three API settings signals intent to use the API, so a
+  // half-finished migration fails loudly rather than quietly falling back to
+  // the public CSV — which would be a silent downgrade in privacy.
+  const wantsApi = Boolean(sheetId || serviceAccountEmail || serviceAccountKey);
+
+  if (wantsApi) {
+    if (!sheetId) problems.push("SHEET_ID is not set");
+    if (!serviceAccountEmail) problems.push("GOOGLE_SA_EMAIL is not set");
+    if (!serviceAccountKey) problems.push("GOOGLE_SA_PRIVATE_KEY is not set");
+  } else if (!sheetCsvUrl) {
+    problems.push(
+      "No roster source configured: set SHEET_ID, GOOGLE_SA_EMAIL and GOOGLE_SA_PRIVATE_KEY, or SHEET_CSV_URL"
+    );
   } else if (!/^https:\/\//i.test(sheetCsvUrl)) {
     problems.push("SHEET_CSV_URL must be an https URL");
   }
@@ -77,6 +95,11 @@ export function loadConfig(env = {}) {
 
   return {
     clientId,
+    rosterSource: wantsApi ? "api" : "csv",
+    sheetId,
+    sheetRange: text(env.SHEET_RANGE) || "A:D",
+    serviceAccountEmail,
+    serviceAccountKey,
     sheetCsvUrl,
     allowedDomains,
     allowedOrigins: list(env.ALLOWED_ORIGINS),

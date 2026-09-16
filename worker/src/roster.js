@@ -65,9 +65,18 @@ function findHeaderIndexes(headerRow) {
   return indexes;
 }
 
-export function buildRoster(csvText) {
-  const rows = parseCsv(csvText);
-  if (rows.length === 0) throw new RosterError("The member Sheet is empty.");
+/**
+ * Build the roster from rows, whichever source produced them: a published CSV
+ * or the Sheets API. Both arrive as an array of arrays with a header row, so
+ * the column-name matching below is shared rather than duplicated.
+ *
+ * The Sheets API omits trailing empty cells, so a row may be shorter than the
+ * header. Cell reads below tolerate that.
+ */
+export function buildRosterFromRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new RosterError("The member Sheet is empty.");
+  }
 
   const indexes = findHeaderIndexes(rows[0]);
   const members = new Map();
@@ -91,6 +100,10 @@ export function buildRoster(csvText) {
   }
 
   return { members, duplicates };
+}
+
+export function buildRoster(csvText) {
+  return buildRosterFromRows(parseCsv(csvText));
 }
 
 export function findMember(roster, email) {
