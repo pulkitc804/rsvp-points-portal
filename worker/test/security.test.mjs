@@ -7,7 +7,7 @@
  */
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import worker from "../src/index.js";
+import worker, { resetRosterCache } from "../src/index.js";
 import { resetKeyCache } from "../src/google-auth.js";
 import {
   makeKeyPair,
@@ -33,7 +33,10 @@ async function call(token, options = {}, env = TEST_ENV, csv = SAMPLE_CSV) {
   return { response, body: await response.json().catch(() => null) };
 }
 
-beforeEach(() => resetKeyCache());
+beforeEach(() => {
+  resetKeyCache();
+  resetRosterCache();
+});
 
 test("a valid Rutgers member sees their own name, points and standing", async () => {
   const token = await signToken(google, validPayload());

@@ -9,7 +9,7 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import worker from "../src/index.js";
+import worker, { resetRosterCache } from "../src/index.js";
 import { fetchRosterRows, resetTokenCache, SheetsError } from "../src/sheets.js";
 import { resetKeyCache } from "../src/google-auth.js";
 import { loadConfig, ConfigError } from "../src/config.js";
@@ -88,6 +88,7 @@ function apiStub({ rows = ROWS, valuesStatus = 200, tokenStatus = 200 } = {}) {
 beforeEach(() => {
   resetTokenCache();
   resetKeyCache();
+  resetRosterCache();
 });
 
 test("the assertion we send Google is a genuinely valid RS256 JWT", async () => {
@@ -229,4 +230,51 @@ test("the CSV path still works when no API settings are present", async () => {
   const config = loadConfig(TEST_ENV);
   assert.equal(config.rosterSource, "csv");
   assert.equal(loadConfig(API_ENV).rosterSource, "api");
+});
+
+// --- Roster caching -------------------------------------------------------
+
+function meRequest(token) {
+  return new Request("https://worker.test/api/me", {
+    headers: { Authorization: `Bearer ${token}`, Origin: "https://rsvp-portal.pages.dev" },
+  });
+}
+
+test("two members signing in cost one Sheets API read, not two", async () => {
+  const stub = apiStub();
+  globalThis.fetch = stub;
+  const token = await signToken(google, validPayload());
+
+  const first = await worker.fetch(meRequest(token), API_ENV);
+  const second = await worker.fetch(meRequest(token), API_ENV);
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  // Without a cache this is 2, and every page load would spend Sheets quota.
+  assert.equal(stub.calls.values, 1);
+});
+
+test("pointing the Worker at a different Sheet does not serve the old rows", async () => {
+  const stub = apiStub();
+  globalThis.fetch = stub;
+  const token = await signToken(google, validPayload());
+
+  await worker.fetch(meRequest(token), API_ENV);
+  await worker.fetch(meRequest(token), { ...API_ENV, SHEET_ID: "a-different-sheet" });
+
+  assert.equal(stub.calls.values, 2, "cache key must include the Sheet id");
+});
+
+test("the cache expires so E-Board edits appear", async () => {
+  const stub = apiStub();
+  globalThis.fetch = stub;
+  const token = await signToken(google, validPayload());
+
+  // SHEET_CACHE_SECONDS of 0 means every read is fresh, which is also the
+  // knob the E-Board would turn if 30 seconds ever felt too slow.
+  const fresh = { ...API_ENV, SHEET_CACHE_SECONDS: "0" };
+  await worker.fetch(meRequest(token), fresh);
+  await worker.fetch(meRequest(token), fresh);
+
+  assert.equal(stub.calls.values, 2);
 });

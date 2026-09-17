@@ -96,7 +96,24 @@ function fail(code, headers, detail) {
   );
 }
 
-async function readRoster(config) {
+async function readRoster(config, now = Date.now() / 1000) {
+  // Keyed by the source, so pointing the Worker at a different Sheet never
+  // serves rows from the previous one.
+  const key =
+    config.rosterSource === "api"
+      ? `api:${config.sheetId}:${config.sheetRange}`
+      : `csv:${config.sheetCsvUrl}`;
+
+  if (rosterCache.roster && rosterCache.key === key && rosterCache.expiresAt > now) {
+    return rosterCache.roster;
+  }
+
+  const roster = await loadRoster(config);
+  rosterCache = { key, roster, expiresAt: now + config.sheetCacheSeconds };
+  return roster;
+}
+
+async function loadRoster(config) {
   if (config.rosterSource === "api") {
     try {
       return buildRosterFromRows(await fetchRosterRows(config));
@@ -121,6 +138,25 @@ async function readRoster(config) {
     throw new RosterFetchError(`Sheet responded ${response.status}`);
   }
   return buildRoster(await response.text());
+}
+
+/**
+ * The parsed roster, reused for SHEET_CACHE_SECONDS.
+ *
+ * The published-CSV path could lean on Cloudflare's own cache via `cacheTtl`,
+ * but an authenticated Sheets API request is not cacheable that way, so
+ * without this every page load would cost a Sheets API call — burning quota
+ * and adding a round trip to Google on every request. Keeping the cache here
+ * rather than at the fetch gives both sources the same, configurable freshness.
+ *
+ * Like any Worker isolate state this is best-effort and per-location, which is
+ * the same guarantee the CDN cache gave.
+ */
+let rosterCache = { key: null, roster: null, expiresAt: 0 };
+
+/** Exposed for tests, which must not leak a roster between cases. */
+export function resetRosterCache() {
+  rosterCache = { key: null, roster: null, expiresAt: 0 };
 }
 
 class RosterFetchError extends Error {
