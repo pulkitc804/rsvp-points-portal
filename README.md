@@ -339,8 +339,22 @@ under **Workers & Pages → rsvp-points-worker → Settings → Variables**.
 | `SHEET_CSV_URL` | — | Published-CSV fallback — secret; ignored when the API is configured |
 | `SHEET_CACHE_SECONDS` | `30` | How long a cached copy of the Sheet may be reused |
 
-**Changing the thresholds** is two edits and a redeploy; no code changes. The
-Worker refuses to start with `THRESHOLD_GOOD` less than or equal to
+**Changing the thresholds.** They are plain variables, so there are two ways,
+and the difference matters:
+
+- **In `wrangler.toml`, then `npx wrangler deploy`.** This is the durable one.
+  The file is the source of truth and the change is in git.
+- **In the Cloudflare dashboard** (Workers & Pages → rsvp-points-worker →
+  Settings → Variables). Takes effect immediately with no deploy — but
+  **the next `wrangler deploy` overwrites it** with whatever `wrangler.toml`
+  says, because a deploy re-applies the whole `[vars]` block.
+
+So a dashboard edit is fine for an immediate change, but update
+`wrangler.toml` to match or the next code change silently reverts the
+thresholds and members see the wrong standing. `GET /api/health` returns the
+live values, which is the quickest way to confirm what is actually in effect.
+
+The Worker refuses to start with `THRESHOLD_GOOD` less than or equal to
 `THRESHOLD_OKAY`, so a typo cannot silently produce a standing no one can
 reach.
 
