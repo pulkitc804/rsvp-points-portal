@@ -20,6 +20,13 @@ Browser  ──  Google ID token  ──▶  Cloudflare Worker  ──  reads CS
 | API Worker | https://rsvp-points-worker.pc937.workers.dev |
 
 Both run on the Cloudflare account for `pc937@scarletmail.rutgers.edu`.
+
+The roster is read from a **private** Google Sheet through the Sheets API,
+shared read-only with the service account
+`rsvp-portal-reader@rsvp-points-portal.iam.gserviceaccount.com`. The Sheet is
+no longer published to the web, so there is no public link to the roster.
+`SHEET_CSV_URL` is unset; the published-CSV path documented below remains
+supported but is not in use.
 Cloudflare Pages is now part of Workers, so the frontend is a Worker serving
 static assets rather than a classic Pages project — `_headers` still applies,
 verified live.
