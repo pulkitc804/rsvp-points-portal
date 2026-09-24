@@ -150,10 +150,6 @@ Do these in sequence. Each step assumes the one before it succeeded.
    This rewrites `WORKER_URL` in `web/config.js` and `ALLOWED_ORIGINS` in
    `worker/wrangler.toml`. Also paste the new client ID from step 5 into
    `GOOGLE_CLIENT_ID` in **both** `web/config.js` and `worker/wrangler.toml`.
-
-   > The script's printed "next steps" still mention `SHEET_CSV_URL`. Ignore
-   > that line — the three secrets in step 9 are what this deployment uses.
-
 8. **Deploy both Workers.** They are two projects with two config files, and
    the working directory matters:
 
