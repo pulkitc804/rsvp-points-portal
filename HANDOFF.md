@@ -6,6 +6,17 @@ Cloud project, the Cloudflare account, and this repository. None of it needs a
 code change — every value the portal depends on is an environment variable, a
 Cloudflare secret, or a URL in two files.
 
+**The goal is a permanent portal: every account owned by the club, nothing
+owned by any individual student, and a handover routine that survives officers
+graduating.** That means more than copying things across once. Three sections
+matter as much as the migration steps themselves:
+
+- "Everything that still points at Pulkit" — the hidden dependencies that
+  survive a half-done migration and only fail months later.
+- "Costs and limits" — why this stays free, and what a custom domain buys.
+- "Credential custody and the yearly turnover routine" — the part that makes it
+  permanent rather than merely moved.
+
 Read section 0 before anyone creates an account. Choosing the wrong destination
 Google account is the one decision here that is expensive to reverse.
 
@@ -70,6 +81,48 @@ Worker's `ALLOWED_DOMAINS`, and members must still be in the Sheet.
 > migrating, because it determines whether step 5 below needs the Publish-app
 > step.
 
+### Does Rutgers-only sign-in still work from a club-owned Cloud project?
+
+Yes. This was checked against the code rather than assumed, because the whole
+migration depends on it.
+
+Members sign in with a `scarletmail.rutgers.edu` account, and that keeps working
+from any Cloud project, Rutgers-owned or not. Google will issue an ID token for
+a Rutgers Workspace account to an External app just as it does to an Internal
+one. What enforces "Rutgers only" is our own code, in two independent places:
+
+1. `worker/src/google-auth.js` verifies the token's signature against Google's
+   public keys (`https://www.googleapis.com/oauth2/v3/certs`), checks the issuer
+   is `accounts.google.com`, checks `aud` equals our `GOOGLE_CLIENT_ID`, checks
+   expiry, and requires `email_verified`. None of those checks reference the
+   project owner.
+2. `worker/src/config.js` `domainAllowed()` then rejects any verified email
+   whose domain is not in `ALLOWED_DOMAINS`, **before** the Sheet is read.
+   `worker/test/security.test.mjs` proves a Gmail address is refused even when
+   it has been typed into the Sheet, using locally signed tokens — which is
+   exactly the case of a token from a project we do not control.
+
+The optional `REQUIRE_HOSTED_DOMAIN` setting also still works: the `hd` claim is
+present in the ID token for any Google Workspace account, independent of who
+owns the OAuth client. Note that `web/app.js` passes only `client_id` to Google
+Identity Services and no `hosted_domain` hint, so the Worker, not Google, has
+always been the thing enforcing the domain rule.
+
+**What does change.** Under Internal, Google refuses a personal Gmail before the
+request reaches us. Under External, that same attempt reaches the portal and
+gets our "Please sign in with your Rutgers account" error instead. Same outcome,
+different place, and the portal already has copy for it.
+
+**The one thing to test rather than trust:** Rutgers' Workspace admins can
+restrict which third-party apps their users may use (Admin console → Security →
+API controls). This app requests only `openid`, `email` and `profile`, which is
+the category Google's own defaults exempt, and today's Internal setup sidesteps
+the question entirely. After migrating, sign in once with a real scarletmail
+account before announcing the new URL. If Rutgers blocks it, the club's options
+are to ask Rutgers OIT to allow the app by its client ID, or to keep the Cloud
+project on a Rutgers account and accept the graduation risk. Verification step 4
+covers this.
+
 ## Everything that must be recreated
 
 Cloudflare **secrets do not transfer** between accounts, and they cannot be read
@@ -106,6 +159,51 @@ in the Google Cloud console.
 `SHEET_CSV_URL` is **deleted and must not be recreated.** It is still accepted
 by the code as a legacy fallback, which is exactly why setting it would be a
 silent privacy regression.
+
+## Everything that still points at Pulkit
+
+A half-done migration looks fine until the day his accounts close. This is the
+full list, from grepping the repository rather than from memory. Every item has
+to end up owned by the club.
+
+**Hardcoded in the repo** (all say `pc937`, his Cloudflare subdomain):
+
+| File | What | Fixed by |
+|---|---|---|
+| `web/config.js` | `WORKER_URL` | `./scripts/set-urls.sh <sub>` |
+| `worker/wrangler.toml` | `ALLOWED_ORIGINS` | `./scripts/set-urls.sh <sub>` |
+| `web/config.js` and `worker/wrangler.toml` | `GOOGLE_CLIENT_ID` | **by hand**, if a new client is created |
+| `README.md` lines 19–22 | the live URLs and "the Cloudflare account for pc937@scarletmail.rutgers.edu" | **by hand** |
+| `web/_headers` | CSP `connect-src https://*.workers.dev` | nothing, unless a custom domain is used — see below |
+
+The wildcard in `web/_headers` means a new `workers.dev` subdomain needs no CSP
+edit. A **custom domain does**: add that origin to `connect-src` or sign-in
+fails with a CSP error and no obvious cause. `set-urls.sh` does not touch that
+file. The `pages.dev` origins in `worker/test/` are fixtures, not real URLs.
+
+**Owned by his Google account, and must be re-created rather than moved:**
+
+- The **OAuth consent screen and client** live in his Cloud project. If the club
+  keeps using the existing client ID, sign-in dies the day that project or
+  account does — and nobody will be able to add next year's origin before then.
+  A new client ID signs every member out once (they just sign in again) and must
+  be pasted into both `web/config.js` and `worker/wrangler.toml`.
+- The **service account** `rsvp-portal-reader@rsvp-points-portal...` belongs to
+  that same project. A new one is needed in the club project, and the Sheet must
+  be re-shared with its address as Viewer.
+- The **service account private key** exists in exactly one place we can read:
+  the JSON file downloaded at creation. Cloudflare will not show the secret
+  back. If the file is lost, no one is locked out permanently — create a new key
+  on the service account and re-set `GOOGLE_SA_PRIVATE_KEY` — but that requires
+  access to the Cloud project, which is the thing being migrated.
+- The **Sheet** is owned by his account. Transfer ownership; do not copy it,
+  because `SHEET_ID` points at one specific file.
+
+**Owned by his Cloudflare account:** both Workers, the `pc937` subdomain (which
+is per-account and cannot be transferred), and all three secrets.
+
+**Not a dependency, despite appearances:** the Google client ID and the Worker
+URLs in the repo are public by design, and nothing secret was ever committed.
 
 ## The migration, in order
 
@@ -231,8 +329,12 @@ that prove the private-Sheet path specifically.
    "could not read the member list" error — that proves the service account is
    the only thing granting access. Re-share it as Viewer immediately after.
 
-4. **A real member sees real data.** Sign in on the new portal URL with a
-   Rutgers account that **is** in the Sheet. Correct name, points and standing.
+4. **A real member sees real data, on a real scarletmail account.** Sign in on
+   the new portal URL with a `scarletmail.rutgers.edu` account that **is** in
+   the Sheet. Correct name, points and standing. This is also the test that a
+   Rutgers account can consent to an app owned by a club Gmail project; if
+   Google shows a Rutgers admin block instead of the portal, see the end of
+   section 0.
 
 5. **A non-member is refused.** Sign in with a Rutgers account that is **not**
    in the Sheet. Expect "You're not on the list yet". Then sign in with a
@@ -248,14 +350,110 @@ If sign-in silently does nothing, the cause is almost always the new portal
 origin missing from either the Worker's `ALLOWED_ORIGINS` or Google's authorized
 JavaScript origins. Those two and `WORKER_URL` must all agree.
 
-If RSVP would rather the address never change again, register a domain and
-attach it to the Worker as a custom domain. The URL then survives any future
-account move, because the domain becomes the stable thing rather than the host.
+## Costs and limits — why this stays free
 
-## Who to hand it to
+Nothing here needs a credit card, and none of the free tiers can generate a
+surprise bill. Cloudflare's free plan has no overage billing: past the limit
+requests are rejected, not charged.
 
-Whoever maintains this next needs all four: the Cloudflare account, the Google
-Cloud project, the Sheet, and the repository. Fewer than four leaves the portal
-unmaintainable — the most common failure is inheriting the repo without the
-Cloud project, which means no one can add next year's authorized origin, and
-nobody can re-download the service account key.
+- **Cloudflare Workers, free plan:** 100,000 Worker requests per day for the
+  whole account and 10 ms of CPU per request. Requests served as static assets
+  by the frontend Worker do not count against that. This portal does a few
+  milliseconds of work per request, and a club of a few hundred members reading
+  their points is three orders of magnitude below the daily limit. Keep the
+  account on Free and do not add a payment method; then no configuration
+  mistake can cost money.
+- **Google Sheets API:** free, with no billing account required on the Cloud
+  project. Quotas are per-project per-minute (hundreds of reads), and the Worker
+  caches the roster for `SHEET_CACHE_SECONDS` (30), so the ceiling is roughly
+  two reads a minute per Cloudflare location no matter how many members reload.
+- **Google Cloud project, OAuth, service account, Google Sheet, GitHub:** free
+  at this usage. Do not enable billing on the Cloud project; nothing here needs
+  it, and an enabled billing account is the only way this could ever cost
+  anything.
+
+### Custom domain, or stay on workers.dev?
+
+`workers.dev` is free, needs no maintenance, and is perfectly respectable for a
+club portal. Its one drawback is that the subdomain belongs to the Cloudflare
+*account*, so the URL changes on every account move — which is exactly the
+disruption this migration is going through now.
+
+A custom domain (say `points.rsvp-rutgers.org`) costs roughly $10–15 a year at
+Cloudflare Registrar, which sells at cost, and makes the address permanent: any
+future account move becomes invisible to members. The trade-offs are real
+though: it is a recurring payment that must not lapse, it becomes a fifth asset
+to hand over each year, and it needs one code change the migration script does
+not make — adding the domain to `connect-src` in `web/_headers`.
+
+Recommendation: migrate to `workers.dev` first and confirm everything works,
+then add a custom domain later only if the club already owns a domain or is
+willing to own the renewal. Adding one later is a small, safe change.
+
+## Where the repository should live
+
+Today: `github.com/pulkitc804/rsvp-points-portal`, public, on a personal
+account.
+
+**Recommended: transfer it to a club-owned GitHub organisation** (a free org
+owned by the club Google account, with at least two officers as owners).
+Settings → General → Transfer ownership. GitHub keeps redirects from the old
+URL, so nothing breaks at the moment of transfer. An organisation is the only
+option here where ownership is a *role* that can be reassigned, rather than
+something attached to one person's login.
+
+If it stays on his personal account: the code is public so it can never be
+lost — anyone can fork it — but the club cannot merge changes, cannot manage
+access, and loses the issue history and the canonical URL whenever he deletes or
+renames the account. Forking to a club org instead of transferring works too,
+but leaves the original as the address people find first.
+
+Either way, the repository alone is worthless without the Cloudflare account and
+the Cloud project. Do not treat "we have the code" as having inherited the
+portal.
+
+## Credential custody and the yearly turnover routine
+
+Permanence is a custody problem, not a technical one. The portal only needs five
+credentials, and they should be held the same way the club holds its other
+accounts.
+
+| Credential | Who should hold it | Notes |
+|---|---|---|
+| Club Google account (owns Cloud project + Sheet) | President and one technical officer | The root of everything else |
+| Cloudflare account (same club email) | Same two people | Use the club Google account to sign in |
+| GitHub organisation | Same two people as org Owners | Add other officers as members |
+| Service account JSON key file | Stored in the club's password manager or the club Drive | The only readable copy of the private key |
+| Sheet edit access | All E-Board officers | Members need no access at all |
+
+Rules that make this survive:
+
+1. **Two people, always.** One is a single point of failure; everyone is a
+   security problem. Two officers, one of whom is not graduating this year.
+2. **The club Google account signs in to everything else.** Cloudflare and
+   GitHub should both use that address, so rotating one password recovers
+   everything.
+3. **Turn on two-factor authentication** on the club Google account, with
+   recovery codes stored where the club stores its other credentials — not on
+   one officer's phone alone.
+4. **Nothing personal, ever.** No officer's Rutgers or personal address should
+   own an asset. If one does, that asset is on a countdown to their graduation.
+
+**Every spring, before officers graduate,** the outgoing technical officer runs
+this with the incoming one, in one sitting:
+
+1. Change the club Google account password; confirm the new officer can sign in
+   and that 2FA recovery codes are updated in the club's store.
+2. Confirm the incoming officer can sign in to Cloudflare and see both Workers,
+   and to GitHub as an org Owner.
+3. Run the six checks in section 13 together. They double as the training.
+4. Confirm the service account is still a Viewer on the Sheet and the JSON key
+   file is still where the custody table says it is.
+5. Remove graduating officers from the GitHub org and from Sheet edit access,
+   and delete any personal account that still has access to anything.
+
+Whoever maintains this next needs all four assets: the Cloudflare account, the
+Google Cloud project, the Sheet, and the repository. Fewer than four leaves the
+portal unmaintainable — the most common failure is inheriting the repo without
+the Cloud project, which means no one can add next year's authorized origin or
+re-issue the service account key.
