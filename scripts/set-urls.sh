@@ -42,7 +42,9 @@ Next, in order:
 
   1. cd worker && npx wrangler deploy
   2. npx wrangler deploy -c site.wrangler.jsonc     (from the repo root)
-  3. npx wrangler secret put SHEET_CSV_URL          (secrets do not migrate)
+  3. cd worker && npx wrangler secret put SHEET_ID  (secrets do not migrate)
+     npx wrangler secret put GOOGLE_SA_EMAIL
+     npx wrangler secret put GOOGLE_SA_PRIVATE_KEY
 
   4. In the Google Cloud console, under your OAuth client's
      "Authorized JavaScript origins" — NOT "Authorized redirect URIs" — add:
